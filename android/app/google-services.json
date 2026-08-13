@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "127188603534",
+    "project_id": "scholarsync-app-2026",
+    "storage_bucket": "scholarsync-app-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:127188603534:android:534bc42b183440189fefdf",
+        "android_client_info": {
+          "package_name": "com.example.scholarsync.scholarsync"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "127188603534-gb0vqr9ar2ailrdgvs285jbcdtdci6pa.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.scholarsync.scholarsync",
+            "certificate_hash": "5355b691001429675b734b6b62102c212fa690d2"
+          }
+        },
+        {
+          "client_id": "127188603534-r2vlthlmlkqnbngbsmi2118ccd6nsip9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDweFngNt4E28KyR976neeIMyxPQz6a5ys"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "127188603534-r2vlthlmlkqnbngbsmi2118ccd6nsip9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
