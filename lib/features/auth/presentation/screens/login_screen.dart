@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../notifications/presentation/notification_provider.dart';
 import '../../../profile/presentation/profile_provider.dart';
@@ -48,6 +49,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthProvider>();
+    final profileProvider = context.read<ProfileProvider>();
+
     final success = await auth.signInWithEmail(
       email: _emailController.text.trim(),
       password: _passwordController.text,
@@ -57,8 +60,33 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!success && auth.error != null) {
       setState(() => _errorMessage = auth.error!);
     } else if (success) {
-      context.go('/home');
+      final user = auth.currentUser;
+      if (user != null) {
+        await profileProvider.syncProfile(
+          firebaseUid: user.uid,
+          email: user.email ?? '',
+          fullName: user.displayNameOrEmail,
+          avatarUrl: user.photoUrl,
+          authProvider: 'password',
+        );
+        if (!mounted) return;
+        await context.read<NotificationProvider>().syncDeviceToken(user.uid);
+      }
+      if (!mounted) return;
+      if (profileProvider.profile?.role.isAdmin ?? false) {
+        context.go('/admin');
+      } else {
+        context.go('/home');
+      }
     }
+  }
+
+  void _fillAdminCredentials() {
+    setState(() {
+      _emailController.text = 'admin@scholarsync.com';
+      _passwordController.text = 'Admin@123456';
+      _errorMessage = '';
+    });
   }
 
   Future<void> _signInWithGoogle() async {
@@ -94,7 +122,13 @@ class _LoginScreenState extends State<LoginScreen> {
       await context.read<NotificationProvider>().syncDeviceToken(user.uid);
 
       if (!mounted) return;
-      context.go('/home');
+
+      final isOnboardingDone = profileProvider.profile?.onboardingCompleted ?? false;
+      if (isOnboardingDone) {
+        context.go('/home');
+      } else {
+        context.go('/onboarding');
+      }
     }
   }
 
@@ -145,7 +179,36 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              const SizedBox(height: AppDimensions.spacingXxxl),
+              const SizedBox(height: 12),
+
+              InkWell(
+                onTap: _fillAdminCredentials,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.shield_rounded, size: 14, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        '⚡ Fill App Owner Admin (admin@scholarsync.com)',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: AppDimensions.spacingXxl),
 
               // ── Error ─────────────────────────────────────────────────────────
               if (_errorMessage.isNotEmpty) ...[

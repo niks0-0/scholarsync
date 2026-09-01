@@ -36,6 +36,12 @@ dependencies:
   # Supabase (Database / Storage / Auth Bridge)
   supabase_flutter: ^2.8.3
 
+  # Image Picker (Avatar Uploads)
+  image_picker: ^1.1.2
+
+  # Local Personalization Storage
+  shared_preferences: ^2.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -112,7 +112,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await context.read<NotificationProvider>().syncDeviceToken(user.uid);
 
       if (!mounted) return;
-      context.go('/home');
+
+      final isOnboardingDone = profileProvider.profile?.onboardingCompleted ?? false;
+      if (isOnboardingDone) {
+        context.go('/home');
+      } else {
+        context.go('/onboarding');
+      }
     }
   }
 

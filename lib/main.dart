@@ -7,10 +7,24 @@ import 'core/services/notification_service.dart';
 import 'core/services/supabase_service.dart';
 import 'core/services/theme_service.dart';
 import 'core/theme/app_theme.dart';
+import 'features/academic_catalog/data/repositories/supabase_academic_catalog_repository.dart';
+import 'features/academic_catalog/domain/repositories/academic_catalog_repository.dart';
+import 'features/academic_catalog/presentation/academic_catalog_provider.dart';
+import 'features/admin/data/repositories/supabase_admin_repository.dart';
+import 'features/admin/domain/repositories/admin_repository.dart';
+import 'features/admin/presentation/admin_provider.dart';
 import 'features/auth/auth_provider.dart';
+import 'features/dashboard/presentation/dashboard_personalization_provider.dart';
+import 'features/dashboard/presentation/dashboard_provider.dart';
 import 'features/notifications/presentation/notification_provider.dart';
+import 'features/onboarding/presentation/onboarding_provider.dart';
+import 'features/profile/data/repositories/supabase_profile_repository.dart';
+import 'features/profile/domain/repositories/profile_repository.dart';
 import 'features/profile/presentation/profile_provider.dart';
 import 'features/storage/presentation/storage_provider.dart';
+import 'features/timetable/data/repositories/supabase_timetable_repository.dart';
+import 'features/timetable/domain/repositories/timetable_repository.dart';
+import 'features/timetable/presentation/timetable_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,6 +62,18 @@ class ScholarSyncApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        Provider<ProfileRepository>(
+          create: (_) => const SupabaseProfileRepository(),
+        ),
+        Provider<AcademicCatalogRepository>(
+          create: (_) => const SupabaseAcademicCatalogRepository(),
+        ),
+        Provider<TimetableRepository>(
+          create: (_) => const SupabaseTimetableRepository(),
+        ),
+        Provider<AdminRepository>(
+          create: (_) => const SupabaseAdminRepository(),
+        ),
         ChangeNotifierProvider<ThemeService>(
           create: (_) => ThemeService(),
         ),
@@ -62,6 +88,24 @@ class ScholarSyncApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<NotificationProvider>(
           create: (_) => NotificationProvider(),
+        ),
+        ChangeNotifierProvider<OnboardingProvider>(
+          create: (_) => OnboardingProvider(),
+        ),
+        ChangeNotifierProvider<DashboardProvider>(
+          create: (_) => DashboardProvider(),
+        ),
+        ChangeNotifierProvider<DashboardPersonalizationProvider>(
+          create: (_) => DashboardPersonalizationProvider(),
+        ),
+        ChangeNotifierProvider<AcademicCatalogProvider>(
+          create: (_) => AcademicCatalogProvider(),
+        ),
+        ChangeNotifierProvider<TimetableProvider>(
+          create: (_) => TimetableProvider(),
+        ),
+        ChangeNotifierProvider<AdminProvider>(
+          create: (_) => AdminProvider(),
         ),
       ],
       child: const _AppView(),
