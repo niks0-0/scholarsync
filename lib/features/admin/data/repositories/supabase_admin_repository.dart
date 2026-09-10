@@ -16,6 +16,8 @@ import '../../domain/models/campus_event.dart';
 import '../../domain/models/marketplace_listing.dart';
 import '../../domain/models/student_club.dart';
 import '../../domain/models/community_post.dart';
+import '../../domain/models/moderation_context.dart';
+import '../../domain/models/chat_member.dart';
 import '../../domain/repositories/admin_repository.dart';
 
 /// Supabase PostgREST & RPC implementation of [AdminRepository].
@@ -315,6 +317,33 @@ class SupabaseAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<UserProfile> createStudentProfile(UserProfile profile) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final payload = profile.toJson();
+      final res = await client.from('profiles').insert(payload).select().single();
+      return UserProfile.fromJson(res);
+    } catch (e) {
+      debugPrint('Error creating student profile: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteStudentProfile(String userId) async {
+    try {
+      final client = SupabaseService.instance.client;
+      await client.from('profiles').update({
+        'is_deleted': true,
+        'deleted_at': DateTime.now().toIso8601String(),
+      }).eq('id', userId);
+    } catch (e) {
+      debugPrint('Error deleting student profile: $e');
+      rethrow;
+    }
+  }
+
+  @override
   Future<List<StudyNote>> fetchNotes({String? status, String? query}) async {
     try {
       final client = SupabaseService.instance.client;
@@ -333,6 +362,36 @@ class SupabaseAdminRepository implements AdminRepository {
     } catch (e) {
       debugPrint('Error fetching notes: $e');
       return [];
+    }
+  }
+
+  @override
+  Future<StudyNote> createStudyNote(StudyNote note) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final payload = note.toJson();
+      if (payload['id'] == null || (payload['id'] as String).isEmpty) {
+        payload.remove('id');
+      }
+      final res = await client.from('notes').insert(payload).select('*, profiles(full_name), subjects(name)').single();
+      return StudyNote.fromJson(res);
+    } catch (e) {
+      debugPrint('Error creating study note: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteStudyNote(String noteId) async {
+    try {
+      final client = SupabaseService.instance.client;
+      await client.from('notes').update({
+        'is_deleted': true,
+        'deleted_at': DateTime.now().toIso8601String(),
+      }).eq('id', noteId);
+    } catch (e) {
+      debugPrint('Error deleting note: $e');
+      rethrow;
     }
   }
 
@@ -385,6 +444,69 @@ class SupabaseAdminRepository implements AdminRepository {
     } catch (e) {
       debugPrint('Error fetching moderation reports: $e');
       return [];
+    }
+  }
+
+  @override
+  Future<ModerationContext> fetchReportContext(String reportId, {int contextCount = 3}) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final dynamic res = await client.rpc('get_reported_message_context', params: {
+        'p_report_id': reportId,
+        'p_context_count': contextCount,
+      });
+      return ModerationContext.fromJson(Map<String, dynamic>.from(res as Map));
+    } catch (e) {
+      debugPrint('Error fetching report context: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<bool> moderateUser({
+    required String userId,
+    required String action,
+    int? durationMinutes,
+    required String reason,
+    String? roomId,
+  }) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final adminId = client.auth.currentUser?.id ?? 'SQJRGQZkujOAIfFEetfaqPqtHbL2';
+      final dynamic res = await client.rpc('admin_moderate_user', params: {
+        'p_user_id': userId,
+        'p_admin_id': adminId,
+        'p_action': action,
+        'p_duration_minutes': durationMinutes,
+        'p_reason': reason,
+        'p_room_id': roomId,
+      });
+      return res != null;
+    } catch (e) {
+      debugPrint('Error moderating user: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<bool> moderateMessage({
+    required String messageId,
+    required String action,
+    required String reason,
+  }) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final adminId = client.auth.currentUser?.id ?? 'SQJRGQZkujOAIfFEetfaqPqtHbL2';
+      final dynamic res = await client.rpc('admin_moderate_message', params: {
+        'p_message_id': messageId,
+        'p_admin_id': adminId,
+        'p_action': action,
+        'p_reason': reason,
+      });
+      return res != null;
+    } catch (e) {
+      debugPrint('Error moderating message: $e');
+      rethrow;
     }
   }
 
@@ -445,10 +567,31 @@ class SupabaseAdminRepository implements AdminRepository {
   Future<ChatRoom> createChatRoom(ChatRoom room) async {
     try {
       final client = SupabaseService.instance.client;
-      final res = await client.from('chat_rooms').insert(room.toJson()).select().single();
+      final payload = room.toJson();
+      if (payload['id'] == null || (payload['id'] as String).isEmpty) {
+        payload.remove('id');
+      }
+      final res = await client.from('chat_rooms').insert(payload).select().single();
       return ChatRoom.fromJson(res);
     } catch (e) {
       debugPrint('Error creating chat room: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> toggleRoomLock(String roomId, bool isLocked, {String? reason}) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final adminId = client.auth.currentUser?.id ?? 'SQJRGQZkujOAIfFEetfaqPqtHbL2';
+      await client.rpc('admin_lock_chat_room', params: {
+        'p_room_id': roomId,
+        'p_admin_id': adminId,
+        'p_is_locked': isLocked,
+        'p_reason': reason,
+      });
+    } catch (e) {
+      debugPrint('Error toggling room lock: $e');
       rethrow;
     }
   }
@@ -473,7 +616,7 @@ class SupabaseAdminRepository implements AdminRepository {
       final client = SupabaseService.instance.client;
       final List<dynamic> res = await client
           .from('messages')
-          .select('*, sender:profiles(full_name)')
+          .select('*, sender:profiles(full_name, avatar_url)')
           .eq('room_id', roomId)
           .eq('is_deleted', false)
           .order('created_at', ascending: false)
@@ -483,11 +626,64 @@ class SupabaseAdminRepository implements AdminRepository {
         final map = Map<String, dynamic>.from(json as Map);
         if (map['sender'] != null && map['sender'] is Map) {
           map['sender_name'] = map['sender']['full_name'];
+          map['sender_avatar'] = map['sender']['avatar_url'];
         }
         return ChatMessage.fromJson(map);
       }).toList();
     } catch (e) {
       debugPrint('Error fetching chat messages: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<ChatMessage> sendChatMessage(ChatMessage message) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final dynamic res = await client.rpc('send_chat_message', params: {
+        'p_room_id': message.roomId,
+        'p_sender_id': message.senderId,
+        'p_content': message.content,
+        'p_client_message_id': message.clientMessageId,
+        'p_message_type': message.messageType,
+        'p_reply_to_id': message.replyToId,
+        'p_attachment_url': message.attachmentUrl,
+        'p_attachment_type': message.attachmentType,
+      });
+      return ChatMessage.fromJson(Map<String, dynamic>.from(res as Map));
+    } catch (e) {
+      debugPrint('Error sending chat message: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> toggleMessageReaction(String messageId, String userId, String reactionType) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final dynamic res = await client.rpc('toggle_message_reaction', params: {
+        'p_message_id': messageId,
+        'p_user_id': userId,
+        'p_reaction_type': reactionType,
+      });
+      return Map<String, dynamic>.from(res as Map);
+    } catch (e) {
+      debugPrint('Error toggling reaction: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<ChatMember>> fetchRoomMembers(String roomId) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final List<dynamic> res = await client
+          .from('chat_room_memberships')
+          .select('*, profiles(full_name, avatar_url)')
+          .eq('room_id', roomId);
+      return res.map((json) => ChatMember.fromJson(json as Map<String, dynamic>)).toList();
+    } catch (e) {
+      debugPrint('Error fetching room members: $e');
       return [];
     }
   }
@@ -526,7 +722,11 @@ class SupabaseAdminRepository implements AdminRepository {
   Future<AcademicCalendarEvent> createCalendarEvent(AcademicCalendarEvent event) async {
     try {
       final client = SupabaseService.instance.client;
-      final res = await client.from('academic_calendar').insert(event.toJson()).select().single();
+      final payload = event.toJson();
+      if (payload['id'] == null || (payload['id'] as String).isEmpty) {
+        payload.remove('id');
+      }
+      final res = await client.from('academic_calendar').insert(payload).select().single();
       return AcademicCalendarEvent.fromJson(res);
     } catch (e) {
       debugPrint('Error creating calendar event: $e');
@@ -559,7 +759,7 @@ class SupabaseAdminRepository implements AdminRepository {
       if (category != null && category.isNotEmpty) {
         req = req.eq('category', category);
       }
-      final List<dynamic> res = await req.order('event_date', ascending: true);
+      final List<dynamic> res = await req.order('start_time', ascending: true);
       return res.map((json) {
         final map = Map<String, dynamic>.from(json as Map);
         if (map['organizer'] != null && map['organizer'] is Map) {
@@ -577,7 +777,11 @@ class SupabaseAdminRepository implements AdminRepository {
   Future<CampusEvent> createCampusEvent(CampusEvent event) async {
     try {
       final client = SupabaseService.instance.client;
-      final res = await client.from('events').insert(event.toJson()).select().single();
+      final payload = event.toJson();
+      if (payload['id'] == null || (payload['id'] as String).isEmpty) {
+        payload.remove('id');
+      }
+      final res = await client.from('events').insert(payload).select().single();
       return CampusEvent.fromJson(res);
     } catch (e) {
       debugPrint('Error creating campus event: $e');
@@ -636,6 +840,22 @@ class SupabaseAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<MarketplaceListing> createMarketplaceListing(MarketplaceListing listing) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final payload = listing.toJson();
+      if (payload['id'] == null || (payload['id'] as String).isEmpty) {
+        payload.remove('id');
+      }
+      final res = await client.from('marketplace_listings').insert(payload).select().single();
+      return MarketplaceListing.fromJson(res);
+    } catch (e) {
+      debugPrint('Error creating marketplace listing: $e');
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> updateMarketplaceListingStatus(String listingId, String status) async {
     try {
       final client = SupabaseService.instance.client;
@@ -686,7 +906,11 @@ class SupabaseAdminRepository implements AdminRepository {
   Future<StudentClub> createClub(StudentClub club) async {
     try {
       final client = SupabaseService.instance.client;
-      final res = await client.from('clubs').insert(club.toJson()).select().single();
+      final payload = club.toJson();
+      if (payload['id'] == null || (payload['id'] as String).isEmpty) {
+        payload.remove('id');
+      }
+      final res = await client.from('clubs').insert(payload).select().single();
       return StudentClub.fromJson(res);
     } catch (e) {
       debugPrint('Error creating club: $e');
@@ -741,6 +965,22 @@ class SupabaseAdminRepository implements AdminRepository {
     } catch (e) {
       debugPrint('Error fetching community posts: $e');
       return [];
+    }
+  }
+
+  @override
+  Future<CommunityPost> createCommunityPost(CommunityPost post) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final payload = post.toJson();
+      if (payload['id'] == null || (payload['id'] as String).isEmpty) {
+        payload.remove('id');
+      }
+      final res = await client.from('community_posts').insert(payload).select().single();
+      return CommunityPost.fromJson(res);
+    } catch (e) {
+      debugPrint('Error creating community post: $e');
+      rethrow;
     }
   }
 

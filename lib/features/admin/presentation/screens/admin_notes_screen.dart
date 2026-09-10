@@ -74,6 +74,137 @@ class _AdminNotesScreenState extends State<AdminNotesScreen> {
     );
   }
 
+  void _openUploadNoteDialog(BuildContext context) {
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    final urlController = TextEditingController(text: 'https://example.com/notes.pdf');
+    final admin = context.read<AdminProvider>();
+    String? selectedSubjectId = admin.subjects.isNotEmpty ? admin.subjects.first.id : null;
+    String selectedFileType = 'PDF';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Direct Upload Study Material'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Material Title *',
+                    hintText: 'e.g. Unit 1 - Relational Algebra & SQL Notes',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (admin.subjects.isNotEmpty) ...[
+                  const Text('Curriculum Subject *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedSubjectId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    items: admin.subjects
+                        .map((s) => DropdownMenuItem(
+                              value: s.id,
+                              child: Text('${s.subjectCode} - ${s.subjectName}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ))
+                        .toList(),
+                    onChanged: (val) => setModalState(() => selectedSubjectId = val),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                TextField(
+                  controller: urlController,
+                  decoration: const InputDecoration(
+                    labelText: 'File / Document URL *',
+                    hintText: 'https://storage.scholarsync.com/notes/...',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Description / Topics Covered',
+                    hintText: 'e.g. Complete chapter formulas, sample problems, and solved PYQs.',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('File Type', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: ['PDF', 'PPTX', 'DOCX'].map((t) {
+                    final isSel = selectedFileType == t;
+                    return ChoiceChip(
+                      label: Text(t),
+                      selected: isSel,
+                      selectedColor: AppColors.primary.withValues(alpha: 0.25),
+                      onSelected: (_) => setModalState(() => selectedFileType = t),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.cloud_upload_rounded, size: 18),
+              label: const Text('Upload to Catalog'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              onPressed: () async {
+                final title = titleController.text.trim();
+                final fileUrl = urlController.text.trim();
+                if (title.isEmpty || fileUrl.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a note title and file URL.'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(ctx);
+                final success = await admin.createStudyNote(
+                  StudyNote(
+                    id: '',
+                    title: title,
+                    description: descController.text.trim(),
+                    subjectId: selectedSubjectId ?? '',
+                    uploaderId: 'SQJRGQZkujOAIfFEetfaqPqtHbL2',
+                    uploaderName: 'App Owner Admin',
+                    fileUrl: fileUrl,
+                    fileType: selectedFileType,
+                    fileSizeBytes: 2048576,
+                    status: 'approved',
+                  ),
+                );
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success ? 'Study note uploaded to database catalog!' : 'Failed to upload note.'),
+                      backgroundColor: success ? AppColors.success : AppColors.error,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -83,6 +214,13 @@ class _AdminNotesScreenState extends State<AdminNotesScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.black,
+        icon: const Icon(Icons.upload_file_rounded),
+        label: const Text('Upload Material', style: TextStyle(fontWeight: FontWeight.bold)),
+        onPressed: () => _openUploadNoteDialog(context),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -197,7 +335,7 @@ class _AdminNotesScreenState extends State<AdminNotesScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'No study materials in this category.',
+                                'Tap "+ Upload Material" below to directly publish study materials to database.',
                                 style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                               ),
                             ],
@@ -279,6 +417,22 @@ class _AdminNotesScreenState extends State<AdminNotesScreen> {
                                                     : AppColors.error,
                                           ),
                                         ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                                        tooltip: 'Delete Note',
+                                        onPressed: () async {
+                                          final success = await admin.deleteStudyNote(item.id);
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text(success ? 'Note deleted from database.' : 'Failed to delete note.'),
+                                                backgroundColor: success ? AppColors.success : AppColors.error,
+                                              ),
+                                            );
+                                          }
+                                        },
                                       ),
                                     ],
                                   ),

@@ -65,16 +65,16 @@ class StudyNote {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      if (id.isNotEmpty) 'id': id,
       'title': title,
-      'description': description,
-      'subject_id': subjectId,
-      'uploader_id': uploaderId,
+      if (description != null && description!.isNotEmpty) 'description': description,
+      if (subjectId.isNotEmpty) 'subject_id': subjectId,
+      if (uploaderId.isNotEmpty) 'uploader_id': uploaderId,
       'file_url': fileUrl,
       'file_type': fileType,
       'file_size_bytes': fileSizeBytes,
       'status': status,
-      'rejection_reason': rejectionReason,
+      if (rejectionReason != null) 'rejection_reason': rejectionReason,
       'downloads_count': downloadsCount,
       'ratings_avg': ratingsAvg,
       'is_deleted': isDeleted,

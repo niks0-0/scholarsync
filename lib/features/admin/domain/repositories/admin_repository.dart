@@ -14,6 +14,8 @@ import '../models/campus_event.dart';
 import '../models/marketplace_listing.dart';
 import '../models/student_club.dart';
 import '../models/community_post.dart';
+import '../models/moderation_context.dart';
+import '../models/chat_member.dart';
 
 /// Abstract contract for enterprise administrative operations across ScholarSync.
 abstract class AdminRepository {
@@ -71,8 +73,17 @@ abstract class AdminRepository {
   /// Suspend or reactivate a student account.
   Future<void> toggleUserSuspension(String userId, bool isSuspended, {String? reason});
 
+  /// Create a new student profile.
+  Future<UserProfile> createStudentProfile(UserProfile profile);
+
+  /// Delete a student profile.
+  Future<void> deleteStudentProfile(String userId);
+
   /// Fetch study notes approval queue.
   Future<List<StudyNote>> fetchNotes({String? status, String? query});
+
+  /// Directly upload / publish a study note.
+  Future<StudyNote> createStudyNote(StudyNote note);
 
   /// Moderate a single note (approve/reject).
   Future<void> moderateNote(String noteId, String targetStatus, {String? reason});
@@ -80,11 +91,33 @@ abstract class AdminRepository {
   /// Bulk moderate multiple notes.
   Future<int> bulkModerateNotes(List<String> noteIds, String targetStatus, {String? reason});
 
+  /// Delete a study note.
+  Future<void> deleteStudyNote(String noteId);
+
   /// Fetch moderation reports queue.
   Future<List<ModerationReport>> fetchModerationReports({String? status, String? entityType});
 
-  /// Resolve a moderation report.
+  /// Resolve a moderation report with action and audit notes.
   Future<bool> resolveModerationReport(String reportId, String action, String notes);
+
+  /// Fetch contextual thread history for a moderation report.
+  Future<ModerationContext> fetchReportContext(String reportId, {int contextCount = 3});
+
+  /// Graduated user moderation (warn, mute, ban, suspend) with audit logging.
+  Future<bool> moderateUser({
+    required String userId,
+    required String action,
+    int? durationMinutes,
+    required String reason,
+    String? roomId,
+  });
+
+  /// Administrative message moderation (soft delete) with audit logging.
+  Future<bool> moderateMessage({
+    required String messageId,
+    required String action,
+    required String reason,
+  });
 
   /// Fetch system audit trail.
   Future<List<AuditLogEntry>> fetchAuditLogs({int limit = 50});
@@ -94,14 +127,26 @@ abstract class AdminRepository {
   /// Fetch all active chat rooms.
   Future<List<ChatRoom>> fetchChatRooms({String? type});
 
-  /// Create a new chat room.
+  /// Create a new chat room with duplicate prevention.
   Future<ChatRoom> createChatRoom(ChatRoom room);
+
+  /// Toggle room Safe-Lock mode (blocks new messages while preserving read access).
+  Future<void> toggleRoomLock(String roomId, bool isLocked, {String? reason});
 
   /// Delete a chat room.
   Future<void> deleteChatRoom(String roomId);
 
   /// Fetch messages for a specific chat room.
   Future<List<ChatMessage>> fetchChatMessages(String roomId, {int limit = 50});
+
+  /// Send message with server-side idempotency and rate limiting.
+  Future<ChatMessage> sendChatMessage(ChatMessage message);
+
+  /// Toggle message reaction with zero duplicates.
+  Future<Map<String, dynamic>> toggleMessageReaction(String messageId, String userId, String reactionType);
+
+  /// Fetch members of a chat room.
+  Future<List<ChatMember>> fetchRoomMembers(String roomId);
 
   /// Administrative deletion of a message.
   Future<void> deleteChatMessage(String messageId);
@@ -130,6 +175,9 @@ abstract class AdminRepository {
   /// Fetch marketplace listings.
   Future<List<MarketplaceListing>> fetchMarketplaceListings({String? status, String? category});
 
+  /// Create a new marketplace listing.
+  Future<MarketplaceListing> createMarketplaceListing(MarketplaceListing listing);
+
   /// Moderate or change status of a marketplace listing.
   Future<void> updateMarketplaceListingStatus(String listingId, String status);
 
@@ -150,6 +198,9 @@ abstract class AdminRepository {
 
   /// Fetch community posts.
   Future<List<CommunityPost>> fetchCommunityPosts({String? status, String? category});
+
+  /// Create a new community post.
+  Future<CommunityPost> createCommunityPost(CommunityPost post);
 
   /// Moderate community post status.
   Future<void> updateCommunityPostStatus(String postId, String status);

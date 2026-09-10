@@ -24,15 +24,16 @@ class MarketplaceListing {
   final DateTime? createdAt;
 
   factory MarketplaceListing.fromJson(Map<String, dynamic> json) {
+    final rawImages = json['image_urls'] ?? json['images'];
     return MarketplaceListing(
-      id: json['id'] as String,
-      sellerId: json['seller_id'] as String,
+      id: json['id'] as String? ?? '',
+      sellerId: json['seller_id'] as String? ?? '',
       sellerName: json['seller_name'] as String?,
-      title: json['title'] as String,
+      title: json['title'] as String? ?? '',
       description: json['description'] as String?,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       category: json['category'] as String? ?? 'books',
-      images: (json['images'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      images: (rawImages as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       status: json['status'] as String? ?? 'active',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
@@ -48,7 +49,7 @@ class MarketplaceListing {
       'description': description,
       'price': price,
       'category': category,
-      'images': images,
+      'image_urls': images,
       'status': status,
     };
   }

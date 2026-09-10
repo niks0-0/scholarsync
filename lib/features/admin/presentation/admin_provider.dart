@@ -16,6 +16,8 @@ import '../domain/models/campus_event.dart';
 import '../domain/models/marketplace_listing.dart';
 import '../domain/models/student_club.dart';
 import '../domain/models/community_post.dart';
+import '../domain/models/moderation_context.dart';
+import '../domain/models/chat_member.dart';
 import '../domain/repositories/admin_repository.dart';
 
 /// State Notifier managing administrative operations, moderation, and dashboard state.
@@ -363,6 +365,32 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> createStudentProfile(UserProfile profile) async {
+    try {
+      final created = await _repository.createStudentProfile(profile);
+      _students.insert(0, created);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to create student: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteStudentProfile(String userId) async {
+    try {
+      await _repository.deleteStudentProfile(userId);
+      _students.removeWhere((s) => s.id == userId);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to delete student: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> loadNotes() async {
     try {
       _notes = await _repository.fetchNotes(
@@ -372,6 +400,32 @@ class AdminProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading notes: $e');
+    }
+  }
+
+  Future<bool> createStudyNote(StudyNote note) async {
+    try {
+      final created = await _repository.createStudyNote(note);
+      _notes.insert(0, created);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to upload study note: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteStudyNote(String noteId) async {
+    try {
+      await _repository.deleteStudyNote(noteId);
+      _notes.removeWhere((n) => n.id == noteId);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to delete study note: $e';
+      notifyListeners();
+      return false;
     }
   }
 
@@ -583,6 +637,19 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> createMarketplaceListing(MarketplaceListing listing) async {
+    try {
+      final created = await _repository.createMarketplaceListing(listing);
+      _marketplaceListings.insert(0, created);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to create listing: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> updateMarketplaceListingStatus(String listingId, String status) async {
     try {
       await _repository.updateMarketplaceListingStatus(listingId, status);
@@ -672,6 +739,19 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> createCommunityPost(CommunityPost post) async {
+    try {
+      final created = await _repository.createCommunityPost(post);
+      _communityPosts.insert(0, created);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to create post: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> updateCommunityPostStatus(String postId, String status) async {
     try {
       await _repository.updateCommunityPostStatus(postId, status);
@@ -714,6 +794,123 @@ class AdminProvider extends ChangeNotifier {
       _errorMessage = 'Failed to delete post: $e';
       notifyListeners();
       return false;
+    }
+  }
+
+  // ── Chat Room Safety & Contextual Moderation ──────────────────────────────
+
+  Future<bool> toggleRoomLock(String roomId, bool isLocked, {String? reason}) async {
+    try {
+      await _repository.toggleRoomLock(roomId, isLocked, reason: reason);
+      final index = _chatRooms.indexWhere((r) => r.id == roomId);
+      if (index != -1) {
+        _chatRooms[index] = _chatRooms[index].copyWith(
+          isLocked: isLocked,
+          lockReason: isLocked ? reason : null,
+          lockedAt: isLocked ? DateTime.now() : null,
+        );
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to update room lock status: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<ModerationContext?> fetchReportContext(String reportId, {int contextCount = 3}) async {
+    try {
+      return await _repository.fetchReportContext(reportId, contextCount: contextCount);
+    } catch (e) {
+      debugPrint('Error fetching report context: $e');
+      return null;
+    }
+  }
+
+  Future<bool> moderateUser({
+    required String userId,
+    required String action,
+    int? durationMinutes,
+    required String reason,
+    String? roomId,
+  }) async {
+    try {
+      final success = await _repository.moderateUser(
+        userId: userId,
+        action: action,
+        durationMinutes: durationMinutes,
+        reason: reason,
+        roomId: roomId,
+      );
+      if (success) {
+        await loadStudents();
+      }
+      return success;
+    } catch (e) {
+      _errorMessage = 'Failed to moderate user: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> moderateChatMessage({
+    required String messageId,
+    required String action,
+    required String reason,
+  }) async {
+    try {
+      final success = await _repository.moderateMessage(
+        messageId: messageId,
+        action: action,
+        reason: reason,
+      );
+      if (success) {
+        final index = _activeRoomMessages.indexWhere((m) => m.id == messageId);
+        if (index != -1) {
+          _activeRoomMessages[index] = _activeRoomMessages[index].copyWith(
+            isDeleted: true,
+            deletionReason: reason,
+          );
+        }
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      _errorMessage = 'Failed to moderate message: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> sendChatMessage(ChatMessage message) async {
+    try {
+      final sent = await _repository.sendChatMessage(message);
+      _activeRoomMessages.add(sent);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to send message: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> toggleMessageReaction(String messageId, String userId, String reactionType) async {
+    try {
+      return await _repository.toggleMessageReaction(messageId, userId, reactionType);
+    } catch (e) {
+      debugPrint('Error toggling reaction: $e');
+      return {'status': 'error', 'error': e.toString()};
+    }
+  }
+
+  Future<List<ChatMember>> fetchRoomMembers(String roomId) async {
+    try {
+      return await _repository.fetchRoomMembers(roomId);
+    } catch (e) {
+      debugPrint('Error fetching room members: $e');
+      return [];
     }
   }
 }

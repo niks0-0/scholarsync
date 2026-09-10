@@ -109,7 +109,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             body: Row(
               children: [
                 NavigationRail(
-                  selectedIndex: selectedIndex > 6 ? 0 : selectedIndex,
+                  selectedIndex: selectedIndex,
                   onDestinationSelected: _onDestinationSelected,
                   backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   extended: constraints.maxWidth >= 1100,
@@ -208,6 +208,36 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                       icon: Icon(Icons.forum_outlined),
                       selectedIcon: Icon(Icons.forum_rounded),
                       label: Text('Chat Rooms'),
+                    ),
+                    const NavigationRailDestination(
+                      icon: Icon(Icons.calendar_month_outlined),
+                      selectedIcon: Icon(Icons.calendar_month_rounded),
+                      label: Text('Calendar'),
+                    ),
+                    const NavigationRailDestination(
+                      icon: Icon(Icons.event_available_outlined),
+                      selectedIcon: Icon(Icons.event_available_rounded),
+                      label: Text('Events'),
+                    ),
+                    const NavigationRailDestination(
+                      icon: Icon(Icons.storefront_outlined),
+                      selectedIcon: Icon(Icons.storefront_rounded),
+                      label: Text('Marketplace'),
+                    ),
+                    const NavigationRailDestination(
+                      icon: Icon(Icons.groups_2_outlined),
+                      selectedIcon: Icon(Icons.groups_2_rounded),
+                      label: Text('Clubs'),
+                    ),
+                    const NavigationRailDestination(
+                      icon: Icon(Icons.dynamic_feed_outlined),
+                      selectedIcon: Icon(Icons.dynamic_feed_rounded),
+                      label: Text('Community'),
+                    ),
+                    const NavigationRailDestination(
+                      icon: Icon(Icons.campaign_outlined),
+                      selectedIcon: Icon(Icons.campaign_rounded),
+                      label: Text('Broadcasts'),
                     ),
                     const NavigationRailDestination(
                       icon: Icon(Icons.people_outline_rounded),

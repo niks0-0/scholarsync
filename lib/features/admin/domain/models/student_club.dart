@@ -46,9 +46,8 @@ class StudentClub {
       'name': name,
       'description': description,
       'category': category,
-      'lead_id': leadId,
-      'banner_url': bannerUrl,
-      'member_count': memberCount,
+      if (leadId != null && leadId!.isNotEmpty) 'lead_id': leadId,
+      if (bannerUrl != null && bannerUrl!.isNotEmpty) 'logo_url': bannerUrl,
       'status': status,
     };
   }

@@ -14,6 +14,8 @@ import '../../domain/models/campus_event.dart';
 import '../../domain/models/marketplace_listing.dart';
 import '../../domain/models/student_club.dart';
 import '../../domain/models/community_post.dart';
+import '../../domain/models/moderation_context.dart';
+import '../../domain/models/chat_member.dart';
 import '../../domain/repositories/admin_repository.dart';
 
 /// In-memory mock implementation of [AdminRepository] for testing.
@@ -415,6 +417,39 @@ class MockAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<UserProfile> createStudentProfile(UserProfile profile) async {
+    final newProfile = profile.id.isEmpty
+        ? UserProfile(
+            id: 'student-${_students.length + 1}',
+            email: profile.email,
+            fullName: profile.fullName,
+            avatarUrl: profile.avatarUrl,
+            authProvider: profile.authProvider,
+            onboardingCompleted: profile.onboardingCompleted,
+            role: profile.role,
+            collegeId: profile.collegeId,
+            branch: profile.branch,
+            semester: profile.semester,
+            division: profile.division,
+            academicYear: profile.academicYear,
+            rollNumber: profile.rollNumber,
+            enrollmentNumber: profile.enrollmentNumber,
+            isSuspended: profile.isSuspended,
+            suspensionReason: profile.suspensionReason,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          )
+        : profile;
+    _students.insert(0, newProfile);
+    return newProfile;
+  }
+
+  @override
+  Future<void> deleteStudentProfile(String userId) async {
+    _students.removeWhere((s) => s.id == userId);
+  }
+
+  @override
   Future<List<StudyNote>> fetchNotes({String? status, String? query}) async {
     return _notes.where((n) {
       if (status != null && status.isNotEmpty && n.status != status) return false;
@@ -425,6 +460,30 @@ class MockAdminRepository implements AdminRepository {
       }
       return true;
     }).toList();
+  }
+
+  @override
+  Future<StudyNote> createStudyNote(StudyNote note) async {
+    final newNote = StudyNote(
+      id: 'note-${_notes.length + 1}',
+      title: note.title,
+      description: note.description,
+      subjectId: note.subjectId,
+      subjectName: note.subjectName,
+      uploaderId: note.uploaderId,
+      uploaderName: note.uploaderName,
+      fileUrl: note.fileUrl,
+      fileType: note.fileType,
+      fileSizeBytes: note.fileSizeBytes,
+      status: note.status,
+      rejectionReason: note.rejectionReason,
+      downloadsCount: note.downloadsCount,
+      ratingsAvg: note.ratingsAvg,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    _notes.insert(0, newNote);
+    return newNote;
   }
 
   @override
@@ -455,6 +514,11 @@ class MockAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<void> deleteStudyNote(String noteId) async {
+    _notes.removeWhere((n) => n.id == noteId);
+  }
+
+  @override
   Future<List<ModerationReport>> fetchModerationReports({String? status, String? entityType}) async {
     return _reports.where((r) {
       if (status != null && status.isNotEmpty && r.status != status) return false;
@@ -479,6 +543,100 @@ class MockAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<ModerationContext> fetchReportContext(String reportId, {int contextCount = 3}) async {
+    final report = _reports.firstWhere(
+      (r) => r.id == reportId,
+      orElse: () => _reports.first,
+    );
+    final targetMsg = _chatMessages.firstWhere(
+      (m) => m.id == report.entityId,
+      orElse: () => _chatMessages.isNotEmpty
+          ? _chatMessages.first
+          : ChatMessage(
+              id: report.entityId,
+              roomId: 'room-1',
+              senderId: report.reportedUserId,
+              senderName: report.reportedUserName,
+              content: 'Reported test message content',
+              createdAt: report.createdAt,
+            ),
+    );
+    return ModerationContext(
+      reportId: report.id,
+      reason: report.reason,
+      status: report.status,
+      reporterId: report.reporterId,
+      reportedUserId: report.reportedUserId,
+      roomId: targetMsg.roomId,
+      roomName: 'Mock Room',
+      targetMessage: targetMsg,
+      previousMessages: _chatMessages.where((m) => m.id != targetMsg.id).take(contextCount).toList(),
+      nextMessages: const [],
+    );
+  }
+
+  @override
+  Future<bool> moderateUser({
+    required String userId,
+    required String action,
+    int? durationMinutes,
+    required String reason,
+    String? roomId,
+  }) async {
+    final index = _students.indexWhere((s) => s.id == userId);
+    if (index != -1) {
+      if (action == 'ban' || action == 'suspend') {
+        _students[index] = _students[index].copyWith(
+          isSuspended: true,
+          suspensionReason: reason,
+        );
+      }
+    }
+    _auditLogs.insert(
+      0,
+      AuditLogEntry(
+        id: 'audit-${_auditLogs.length + 1}',
+        adminId: 'mock-admin',
+        action: 'user_$action',
+        targetType: 'user',
+        targetId: userId,
+        metadata: {'reason': reason, 'duration_minutes': durationMinutes, 'room_id': roomId},
+        createdAt: DateTime.now(),
+      ),
+    );
+    return true;
+  }
+
+  @override
+  Future<bool> moderateMessage({
+    required String messageId,
+    required String action,
+    required String reason,
+  }) async {
+    final index = _chatMessages.indexWhere((m) => m.id == messageId);
+    if (index != -1) {
+      _chatMessages[index] = _chatMessages[index].copyWith(
+        isDeleted: true,
+        deletedBy: 'mock-admin',
+        deletionReason: reason,
+      );
+    }
+    _auditLogs.insert(
+      0,
+      AuditLogEntry(
+        id: 'audit-${_auditLogs.length + 1}',
+        adminId: 'mock-admin',
+        action: 'message_$action',
+        targetType: 'message',
+        targetId: messageId,
+        metadata: {'reason': reason},
+        createdAt: DateTime.now(),
+      ),
+    );
+    return true;
+  }
+
+  @override
   Future<List<AuditLogEntry>> fetchAuditLogs({int limit = 50}) async => List.from(_auditLogs);
 
   // ── Phase 3 Mock Implementations ───────────────────────────────────────────
@@ -499,10 +657,27 @@ class MockAdminRepository implements AdminRepository {
       type: room.type,
       subjectId: room.subjectId,
       subjectName: room.subjectName,
+      isLocked: room.isLocked,
+      lockReason: room.lockReason,
+      branch: room.branch,
+      semester: room.semester,
       createdAt: DateTime.now(),
     );
     _chatRooms.add(newRoom);
     return newRoom;
+  }
+
+  @override
+  Future<void> toggleRoomLock(String roomId, bool isLocked, {String? reason}) async {
+    final index = _chatRooms.indexWhere((r) => r.id == roomId);
+    if (index != -1) {
+      _chatRooms[index] = _chatRooms[index].copyWith(
+        isLocked: isLocked,
+        lockReason: isLocked ? reason : null,
+        lockedBy: isLocked ? 'mock-admin' : null,
+        lockedAt: isLocked ? DateTime.now() : null,
+      );
+    }
   }
 
   @override
@@ -513,6 +688,44 @@ class MockAdminRepository implements AdminRepository {
   @override
   Future<List<ChatMessage>> fetchChatMessages(String roomId, {int limit = 50}) async {
     return _chatMessages.where((m) => m.roomId == roomId).toList();
+  }
+
+  @override
+  Future<ChatMessage> sendChatMessage(ChatMessage message) async {
+    final newMsg = ChatMessage(
+      id: 'msg-${_chatMessages.length + 1}',
+      roomId: message.roomId,
+      senderId: message.senderId,
+      senderName: message.senderName,
+      senderAvatar: message.senderAvatar,
+      content: message.content,
+      clientMessageId: message.clientMessageId,
+      messageType: message.messageType,
+      replyToId: message.replyToId,
+      createdAt: DateTime.now(),
+    );
+    _chatMessages.add(newMsg);
+    return newMsg;
+  }
+
+  @override
+  Future<Map<String, dynamic>> toggleMessageReaction(String messageId, String userId, String reactionType) async {
+    return {'status': 'toggled', 'reaction': reactionType};
+  }
+
+  @override
+  Future<List<ChatMember>> fetchRoomMembers(String roomId) async {
+    return _students
+        .map((s) => ChatMember(
+              id: 'member-${s.id}',
+              roomId: roomId,
+              userId: s.id,
+              userName: s.fullName,
+              userAvatar: s.avatarUrl,
+              role: s.role.name,
+              createdAt: DateTime.now(),
+            ))
+        .toList();
   }
 
   @override
@@ -598,6 +811,24 @@ class MockAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<MarketplaceListing> createMarketplaceListing(MarketplaceListing listing) async {
+    final newListing = MarketplaceListing(
+      id: 'listing-${_marketplaceListings.length + 1}',
+      title: listing.title,
+      description: listing.description,
+      price: listing.price,
+      category: listing.category,
+      sellerId: listing.sellerId,
+      sellerName: listing.sellerName,
+      images: listing.images,
+      status: listing.status,
+      createdAt: DateTime.now(),
+    );
+    _marketplaceListings.insert(0, newListing);
+    return newListing;
+  }
+
+  @override
   Future<void> updateMarketplaceListingStatus(String listingId, String status) async {
     final index = _marketplaceListings.indexWhere((l) => l.id == listingId);
     if (index != -1) {
@@ -652,6 +883,27 @@ class MockAdminRepository implements AdminRepository {
       if (category != null && category.isNotEmpty && p.category != category) return false;
       return true;
     }).toList();
+  }
+
+  @override
+  Future<CommunityPost> createCommunityPost(CommunityPost post) async {
+    final newPost = CommunityPost(
+      id: 'post-${_communityPosts.length + 1}',
+      title: post.title,
+      content: post.content,
+      category: post.category,
+      authorId: post.authorId,
+      authorName: post.authorName,
+      tags: post.tags,
+      isPinned: post.isPinned,
+      isLocked: post.isLocked,
+      upvotesCount: post.upvotesCount,
+      commentsCount: post.commentsCount,
+      status: post.status,
+      createdAt: DateTime.now(),
+    );
+    _communityPosts.insert(0, newPost);
+    return newPost;
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../domain/models/community_post.dart';
 import '../admin_provider.dart';
 
 /// Community Forum & Q&A Discussion Governance Studio.
@@ -23,6 +24,123 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
     });
   }
 
+  void _openCreatePostDialog(BuildContext context) {
+    final titleController = TextEditingController();
+    final contentController = TextEditingController();
+    String selectedCategory = 'general';
+    bool isPinned = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Start Community Discussion'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Discussion Title *',
+                    hintText: 'e.g. Tips for MCA Semester 1 DBMS Practical Exam',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: contentController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Content / Question *',
+                    hintText: 'Provide details, instructions, or queries for fellow scholars...',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    'general',
+                    'doubt',
+                    'notes_share',
+                    'career',
+                    'project',
+                  ].map((cat) {
+                    final isSelected = selectedCategory == cat;
+                    return ChoiceChip(
+                      label: Text(cat.replaceAll('_', ' ').toUpperCase()),
+                      selected: isSelected,
+                      selectedColor: const Color(0xFF38BDF8).withValues(alpha: 0.25),
+                      onSelected: (_) => setModalState(() => selectedCategory = cat),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Pin to top of feed', style: TextStyle(fontSize: 14)),
+                  subtitle: const Text('Pinned discussions remain at the top for all students', style: TextStyle(fontSize: 11)),
+                  value: isPinned,
+                  onChanged: (v) => setModalState(() => isPinned = v),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.send_rounded, size: 18),
+              label: const Text('Post Discussion'),
+              onPressed: () async {
+                final title = titleController.text.trim();
+                final content = contentController.text.trim();
+                if (title.isEmpty || content.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Title and content cannot be empty.'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(ctx);
+                final admin = context.read<AdminProvider>();
+                final success = await admin.createCommunityPost(
+                  CommunityPost(
+                    id: '',
+                    authorId: 'SQJRGQZkujOAIfFEetfaqPqtHbL2',
+                    authorName: 'App Owner Admin',
+                    title: title,
+                    content: content,
+                    category: selectedCategory,
+                    isPinned: isPinned,
+                    status: 'active',
+                  ),
+                );
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success ? 'Discussion posted to database!' : 'Failed to publish post.'),
+                      backgroundColor: success ? AppColors.success : AppColors.error,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final admin = context.watch<AdminProvider>();
@@ -32,6 +150,13 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF38BDF8),
+        foregroundColor: Colors.black,
+        icon: const Icon(Icons.add_comment_rounded),
+        label: const Text('New Post', style: TextStyle(fontWeight: FontWeight.bold)),
+        onPressed: () => _openCreatePostDialog(context),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -118,7 +243,7 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Student forum threads, discussions, and study polls will appear here.',
+                                'Tap "+ New Post" below to start an official campus discussion or guidance thread.',
                                 style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                               ),
                             ],

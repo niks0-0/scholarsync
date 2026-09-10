@@ -33,6 +33,7 @@ import '../../features/search/presentation/screens/global_search_screen.dart';
 import '../../features/shared/placeholder_screen.dart';
 import '../../features/shell/presentation/screens/app_shell.dart';
 import '../../features/timetable/presentation/screens/timetable_screen.dart';
+import '../../features/chat/presentation/screens/chat_hub_screen.dart';
 
 /// GoRouter configuration for ScholarSync with Academic Identity Shell & Route Guards.
 ///
@@ -279,13 +280,13 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
-        // Branch 2: Community
+        // Branch 2: Community & Chat Lounges
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: '/community',
               name: 'community',
-              builder: (context, state) => const PlaceholderScreen(title: 'Community'),
+              builder: (context, state) => const ChatHubScreen(),
             ),
           ],
         ),

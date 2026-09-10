@@ -99,6 +99,166 @@ class _AdminStudentsScreenState extends State<AdminStudentsScreen> {
     );
   }
 
+  void _openCreateStudentDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final rollController = TextEditingController();
+    final enrollController = TextEditingController();
+    final admin = context.read<AdminProvider>();
+    String selectedBranch = 'Computer Science & Engineering';
+    int selectedSemester = 1;
+    String? selectedCollegeId = admin.colleges.isNotEmpty ? admin.colleges.first.id : null;
+    UserRole selectedRole = UserRole.student;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Provision Student Profile'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name *',
+                    hintText: 'e.g. Rohan Sharma',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'College Email *',
+                    hintText: 'rohan.sharma@college.edu',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (admin.colleges.isNotEmpty) ...[
+                  const Text('College / Institution *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedCollegeId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    items: admin.colleges
+                        .map((c) => DropdownMenuItem(
+                              value: c.id,
+                              child: Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ))
+                        .toList(),
+                    onChanged: (val) => setModalState(() => selectedCollegeId = val),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: selectedBranch,
+                        decoration: const InputDecoration(labelText: 'Branch', contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
+                        items: const [
+                          DropdownMenuItem(value: 'Computer Science & Engineering', child: Text('CSE / MCA', overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'Information Technology', child: Text('IT', overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'Electronics & Communication', child: Text('ECE', overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'Mechanical Engineering', child: Text('MECH', overflow: TextOverflow.ellipsis)),
+                        ],
+                        onChanged: (v) => setModalState(() => selectedBranch = v ?? selectedBranch),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 90,
+                      child: DropdownButtonFormField<int>(
+                        initialValue: selectedSemester,
+                        decoration: const InputDecoration(labelText: 'Semester', contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
+                        items: List.generate(8, (i) => i + 1)
+                            .map((s) => DropdownMenuItem(value: s, child: Text('Sem $s')))
+                            .toList(),
+                        onChanged: (v) => setModalState(() => selectedSemester = v ?? 1),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: rollController,
+                        decoration: const InputDecoration(labelText: 'Roll No', hintText: '26'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: enrollController,
+                        decoration: const InputDecoration(labelText: 'Enrollment ID', hintText: 'MCA2601'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.person_add_rounded, size: 18),
+              label: const Text('Save Profile'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              onPressed: () async {
+                final name = nameController.text.trim();
+                final email = emailController.text.trim();
+                if (name.isEmpty || email.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Name and email are required.'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(ctx);
+                final generatedUid = 'usr_${DateTime.now().millisecondsSinceEpoch}';
+                final success = await admin.createStudentProfile(
+                  UserProfile(
+                    id: generatedUid,
+                    email: email,
+                    fullName: name,
+                    role: selectedRole,
+                    collegeId: selectedCollegeId,
+                    branch: selectedBranch,
+                    semester: selectedSemester,
+                    rollNumber: rollController.text.trim().isNotEmpty ? rollController.text.trim() : null,
+                    enrollmentNumber: enrollController.text.trim().isNotEmpty ? enrollController.text.trim() : null,
+                    onboardingCompleted: true,
+                  ),
+                );
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success ? 'Student profile saved to database!' : 'Failed to save student profile.'),
+                      backgroundColor: success ? AppColors.success : AppColors.error,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -108,6 +268,13 @@ class _AdminStudentsScreenState extends State<AdminStudentsScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.black,
+        icon: const Icon(Icons.person_add_rounded),
+        label: const Text('Add Student', style: TextStyle(fontWeight: FontWeight.bold)),
+        onPressed: () => _openCreateStudentDialog(context),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -165,10 +332,21 @@ class _AdminStudentsScreenState extends State<AdminStudentsScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : students.isEmpty
                       ? Center(
-                          child: Text(
-                            'No students found matching query.',
-                            style: textTheme.bodyLarge
-                                ?.copyWith(color: colorScheme.onSurfaceVariant),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.people_outline_rounded, size: 56, color: colorScheme.onSurfaceVariant),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No Students Registered',
+                                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Tap "+ Add Student" below to provision student accounts.',
+                                style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                              ),
+                            ],
                           ),
                         )
                       : ListView.separated(
@@ -326,11 +504,64 @@ class _AdminStudentsScreenState extends State<AdminStudentsScreen> {
                                       ],
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.manage_accounts_rounded,
-                                        size: 20, color: AppColors.primary),
-                                    tooltip: 'Change Role / Permissions',
-                                    onPressed: () => _openRoleDialog(context, student),
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
+                                    onSelected: (val) async {
+                                      if (val == 'role') {
+                                        _openRoleDialog(context, student);
+                                      } else if (val == 'suspend') {
+                                        await admin.toggleUserSuspension(student.id, !student.isSuspended);
+                                      } else if (val == 'delete') {
+                                        final success = await admin.deleteStudentProfile(student.id);
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(success ? 'Student record removed.' : 'Failed to delete record.'),
+                                              backgroundColor: success ? AppColors.success : AppColors.error,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    itemBuilder: (ctx) => [
+                                      const PopupMenuItem(
+                                        value: 'role',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.manage_accounts_rounded, color: AppColors.primary, size: 18),
+                                            SizedBox(width: 8),
+                                            Text('Change Role'),
+                                          ],
+                                        ),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'suspend',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              student.isSuspended ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
+                                              color: AppColors.warning,
+                                              size: 18,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text(student.isSuspended ? 'Reactivate Account' : 'Suspend Account'),
+                                          ],
+                                        ),
+                                      ),
+                                      if (!isAdmin) ...[
+                                        const PopupMenuDivider(),
+                                        const PopupMenuItem(
+                                          value: 'delete',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+                                              SizedBox(width: 8),
+                                              Text('Delete Record', style: TextStyle(color: AppColors.error)),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ],
                               ),

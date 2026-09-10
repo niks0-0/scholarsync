@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../domain/models/marketplace_listing.dart';
 import '../admin_provider.dart';
 
 /// Student Marketplace Oversight & Listing Moderation Studio.
@@ -23,6 +24,125 @@ class _AdminMarketplaceScreenState extends State<AdminMarketplaceScreen> {
     });
   }
 
+  void _openCreateListingDialog(BuildContext context) {
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    final priceController = TextEditingController();
+    String selectedCategory = 'books';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Add Marketplace Listing'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Item Title *',
+                    hintText: 'e.g. Drafter & Mini-Drafting Kit',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: priceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Price (₹) *',
+                    hintText: 'e.g. 450',
+                    prefixText: '₹ ',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    hintText: 'e.g. Barely used 1st year engineering drafter with case.',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    'books',
+                    'electronics',
+                    'notes_bundle',
+                    'drafter_tools',
+                    'uniform',
+                  ].map((cat) {
+                    final isSelected = selectedCategory == cat;
+                    return ChoiceChip(
+                      label: Text(cat.replaceAll('_', ' ').toUpperCase()),
+                      selected: isSelected,
+                      selectedColor: const Color(0xFF10B981).withValues(alpha: 0.25),
+                      onSelected: (_) => setModalState(() => selectedCategory = cat),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.check_rounded, size: 18),
+              label: const Text('Publish Listing'),
+              onPressed: () async {
+                final title = titleController.text.trim();
+                final price = double.tryParse(priceController.text.trim()) ?? 0.0;
+                if (title.isEmpty || price <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please provide a valid title and price.'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(ctx);
+                final admin = context.read<AdminProvider>();
+                final success = await admin.createMarketplaceListing(
+                  MarketplaceListing(
+                    id: '',
+                    sellerId: 'SQJRGQZkujOAIfFEetfaqPqtHbL2',
+                    sellerName: 'App Owner Admin',
+                    title: title,
+                    description: descController.text.trim(),
+                    price: price,
+                    category: selectedCategory,
+                    status: 'active',
+                  ),
+                );
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success ? 'Listing published to database!' : 'Failed to create listing.'),
+                      backgroundColor: success ? AppColors.success : AppColors.error,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final admin = context.watch<AdminProvider>();
@@ -32,6 +152,13 @@ class _AdminMarketplaceScreenState extends State<AdminMarketplaceScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF10B981),
+        foregroundColor: Colors.black,
+        icon: const Icon(Icons.add_shopping_cart_rounded),
+        label: const Text('Add Listing', style: TextStyle(fontWeight: FontWeight.bold)),
+        onPressed: () => _openCreateListingDialog(context),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -118,7 +245,7 @@ class _AdminMarketplaceScreenState extends State<AdminMarketplaceScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'All student textbook, drafter, and gadget listings will appear here.',
+                                'Tap "+ Add Listing" below to publish the first buy/sell item.',
                                 style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                               ),
                             ],
@@ -131,6 +258,7 @@ class _AdminMarketplaceScreenState extends State<AdminMarketplaceScreen> {
                             final item = listings[index];
                             final isActive = item.status == 'active';
                             final isFlagged = item.status == 'flagged';
+                            final isSold = item.status == 'sold';
 
                             return Container(
                               padding: const EdgeInsets.all(16),
@@ -167,8 +295,17 @@ class _AdminMarketplaceScreenState extends State<AdminMarketplaceScreen> {
                                           '₹${item.price.toStringAsFixed(0)} • Category: ${item.category.toUpperCase()}',
                                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF34D399)),
                                         ),
+                                        if (item.description != null && item.description!.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            item.description!,
+                                            style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.7)),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
                                         if (item.sellerName != null) ...[
-                                          const SizedBox(height: 2),
+                                          const SizedBox(height: 4),
                                           Text(
                                             'Seller: ${item.sellerName}',
                                             style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6)),
@@ -194,26 +331,69 @@ class _AdminMarketplaceScreenState extends State<AdminMarketplaceScreen> {
                                       ],
                                     ),
                                   ),
-                                  if (isActive)
-                                    IconButton(
-                                      icon: const Icon(Icons.flag_outlined, size: 20, color: AppColors.warning),
-                                      tooltip: 'Flag Listing',
-                                      onPressed: () => admin.updateMarketplaceListingStatus(item.id, 'flagged'),
-                                    ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.error),
-                                    tooltip: 'Delete Listing',
-                                    onPressed: () async {
-                                      final success = await admin.deleteMarketplaceListing(item.id);
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(success ? 'Listing removed.' : 'Failed to delete.'),
-                                            backgroundColor: success ? AppColors.success : AppColors.error,
-                                          ),
-                                        );
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
+                                    onSelected: (val) async {
+                                      if (val == 'delete') {
+                                        final success = await admin.deleteMarketplaceListing(item.id);
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(success ? 'Listing removed.' : 'Failed to delete.'),
+                                              backgroundColor: success ? AppColors.success : AppColors.error,
+                                            ),
+                                          );
+                                        }
+                                      } else {
+                                        await admin.updateMarketplaceListingStatus(item.id, val);
                                       }
                                     },
+                                    itemBuilder: (ctx) => [
+                                      if (!isActive)
+                                        const PopupMenuItem(
+                                          value: 'active',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.check_circle_outline, color: AppColors.success, size: 18),
+                                              SizedBox(width: 8),
+                                              Text('Approve / Make Active'),
+                                            ],
+                                          ),
+                                        ),
+                                      if (!isFlagged)
+                                        const PopupMenuItem(
+                                          value: 'flagged',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.flag_outlined, color: AppColors.warning, size: 18),
+                                              SizedBox(width: 8),
+                                              Text('Flag for Review'),
+                                            ],
+                                          ),
+                                        ),
+                                      if (!isSold)
+                                        const PopupMenuItem(
+                                          value: 'sold',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.sell_outlined, color: AppColors.secondary, size: 18),
+                                              SizedBox(width: 8),
+                                              Text('Mark as Sold'),
+                                            ],
+                                          ),
+                                        ),
+                                      const PopupMenuDivider(),
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+                                            SizedBox(width: 8),
+                                            Text('Delete Listing', style: TextStyle(color: AppColors.error)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
