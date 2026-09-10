@@ -11,6 +11,7 @@ import '../../../auth/presentation/widgets/primary_button.dart';
 import '../../../onboarding/presentation/onboarding_provider.dart';
 import '../../data/repositories/supabase_college_repository.dart';
 import '../../domain/models/college.dart';
+import '../../domain/models/user_profile.dart';
 import '../../domain/models/user_role.dart';
 import '../../domain/repositories/college_repository.dart';
 import '../profile_provider.dart';
@@ -43,20 +44,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isSaving = false;
   String? _errorMessage;
 
+  bool _initializedFromProfile = false;
+
   @override
   void initState() {
     super.initState();
-    final profile = context.read<ProfileProvider>().profile;
-    _nameController = TextEditingController(text: profile?.fullName ?? '');
-    _rollController = TextEditingController(text: profile?.rollNumber ?? '');
-    _enrollmentController = TextEditingController(text: profile?.enrollmentNumber ?? '');
+    _nameController = TextEditingController();
+    _rollController = TextEditingController();
+    _enrollmentController = TextEditingController();
 
-    _branch = profile?.branch ?? OnboardingProvider.availableBranches.first;
-    _semester = profile?.semester ?? 1;
-    _division = profile?.division ?? 'A';
-    _academicYear = profile?.academicYear ?? OnboardingProvider.availableAcademicYears.first;
+    _branch = OnboardingProvider.availableBranches.first;
+    _semester = 1;
+    _division = 'A';
+    _academicYear = OnboardingProvider.availableAcademicYears.first;
+
+    final profile = context.read<ProfileProvider>().profile;
+    if (profile != null) {
+      _populateFields(profile);
+    } else {
+      final user = context.read<AuthProvider>().currentUser;
+      if (user != null) {
+        _nameController.text = user.displayNameOrEmail;
+      }
+    }
 
     _loadColleges(profile?.collegeId);
+  }
+
+  void _populateFields(UserProfile profile) {
+    if (_initializedFromProfile) return;
+    _nameController.text = profile.fullName;
+    _rollController.text = profile.rollNumber ?? '';
+    _enrollmentController.text = profile.enrollmentNumber ?? '';
+    _branch = profile.branch ?? OnboardingProvider.availableBranches.first;
+    _semester = profile.semester ?? 1;
+    _division = profile.division ?? 'A';
+    _academicYear = profile.academicYear ?? OnboardingProvider.availableAcademicYears.first;
+    _initializedFromProfile = true;
   }
 
   Future<void> _loadColleges(String? currentCollegeId) async {
@@ -70,6 +94,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             (c) => c.id == currentCollegeId,
             orElse: () => list.first,
           );
+        } else if (list.isNotEmpty && _selectedCollege == null) {
+          _selectedCollege = list.first;
         }
       });
     } catch (e) {
@@ -132,8 +158,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final profileProvider = context.read<ProfileProvider>();
-    final currentProfile = profileProvider.profile;
-    if (currentProfile == null) return;
+    final authProvider = context.read<AuthProvider>();
+    final authUser = authProvider.currentUser;
+
+    final currentProfile = profileProvider.profile ?? (authUser != null
+        ? UserProfile(
+            id: authUser.uid,
+            email: authUser.email ?? '',
+            fullName: _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : authUser.displayNameOrEmail,
+            avatarUrl: authUser.photoUrl,
+            onboardingCompleted: true,
+          )
+        : null);
+
+    if (currentProfile == null) {
+      setState(() => _errorMessage = 'User session not found. Please re-login.');
+      return;
+    }
 
     setState(() {
       _isSaving = true;
@@ -154,7 +195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // 2. Build updated profile
       final updated = currentProfile.copyWith(
         fullName: _nameController.text.trim(),
-        collegeId: _selectedCollege?.id,
+        collegeId: _selectedCollege?.id ?? currentProfile.collegeId,
         branch: _branch,
         semester: _semester,
         division: _division,
@@ -163,21 +204,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
         enrollmentNumber:
             _enrollmentController.text.trim().isNotEmpty ? _enrollmentController.text.trim() : null,
         avatarUrl: updatedAvatarUrl,
+        onboardingCompleted: true,
       );
 
       // 3. Update profile via ProfileRepository
       final saved = await profileProvider.updateProfile(updated);
 
-      if (mounted && saved != null) {
+      if (mounted) {
+        if (saved != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Academic Identity Profile updated successfully!'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        } else {
+          final err = profileProvider.error ?? 'Failed to update profile in database.';
+          setState(() => _errorMessage = err);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(err),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      final msg = 'Failed to update profile: $e';
+      setState(() => _errorMessage = msg);
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Academic Identity Profile updated successfully!'),
-            backgroundColor: AppColors.success,
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: AppColors.error,
           ),
         );
       }
-    } catch (e) {
-      setState(() => _errorMessage = 'Failed to update profile. Please try again.');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -189,6 +251,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final auth = context.watch<AuthProvider>();
     final profile = context.watch<ProfileProvider>().profile;
+
+    if (profile != null && !_initializedFromProfile) {
+      _populateFields(profile);
+    }
 
     final avatarUrl = profile?.avatarUrl ?? auth.currentUser?.photoUrl;
     final email = profile?.email ?? auth.currentUser?.email ?? 'N/A';
