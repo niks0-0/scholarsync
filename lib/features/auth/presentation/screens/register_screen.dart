@@ -3,22 +3,25 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../notifications/presentation/notification_provider.dart';
 import '../../../profile/presentation/profile_provider.dart';
 import '../../auth_provider.dart';
+import '../widgets/app_divider.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/auth_glass_card.dart';
+import '../widgets/auth_mesh_background.dart';
+import '../widgets/error_message.dart';
+import '../widgets/loading_button.dart';
 import '../widgets/password_field.dart';
 import '../widgets/password_strength_indicator.dart';
-import '../widgets/loading_button.dart';
-import '../widgets/app_divider.dart';
+import '../widgets/quick_persona_sheet.dart';
 import '../widgets/social_login_button.dart';
 import '../widgets/text_button_widget.dart';
-import '../widgets/error_message.dart';
-import '../widgets/auth_scaffold.dart';
 
-/// Register screen — full name + email + password + confirm password.
+/// State-of-the-Art Luxury AMOLED Registration Screen.
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -60,6 +63,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  void _openPersonaSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => QuickPersonaSheet(
+        onSelectCredentials: (email, password, label) async {
+          final auth = context.read<AuthProvider>();
+          final profileProvider = context.read<ProfileProvider>();
+
+          final success = await auth.signInWithEmail(email: email, password: password);
+          if (!mounted) return;
+
+          if (success) {
+            final user = auth.currentUser;
+            if (user != null) {
+              await profileProvider.syncProfile(
+                firebaseUid: user.uid,
+                email: user.email ?? email,
+                fullName: user.displayNameOrEmail,
+                avatarUrl: user.photoUrl,
+                authProvider: 'password',
+              );
+              if (!mounted) return;
+              await context.read<NotificationProvider>().syncDeviceToken(user.uid);
+            }
+            if (!mounted) return;
+            if (profileProvider.profile?.role.isAdmin ?? false) {
+              context.go('/admin');
+            } else {
+              context.go('/home');
+            }
+          }
+        },
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     setState(() => _errorMessage = '');
     if (!_formKey.currentState!.validate()) return;
@@ -97,7 +138,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final user = auth.currentUser;
     if (user != null) {
-      // Sync Supabase Profile (lookup or create)
       await profileProvider.syncProfile(
         firebaseUid: user.uid,
         email: user.email ?? '',
@@ -107,12 +147,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (!mounted) return;
-
-      // Sync FCM device token to Supabase public.user_devices
       await context.read<NotificationProvider>().syncDeviceToken(user.uid);
 
       if (!mounted) return;
-
       final isOnboardingDone = profileProvider.profile?.onboardingCompleted ?? false;
       if (isOnboardingDone) {
         context.go('/home');
@@ -125,179 +162,306 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
     final auth = context.watch<AuthProvider>();
 
-    return AuthScaffold(
-      appBar: AppBar(
-        leading: context.canPop()
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                onPressed: () => context.pop(),
-                tooltip: 'Back',
-              )
-            : null,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      child: AutofillGroup(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Center(child: AppLogo(size: LogoSize.small)),
+    final hasMinLength = _passwordValue.length >= 8;
+    final hasUppercase = _passwordValue.contains(RegExp(r'[A-Z]'));
+    final hasNumber = _passwordValue.contains(RegExp(r'[0-9]'));
+    final hasSpecial = _passwordValue.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
 
-              const SizedBox(height: AppDimensions.spacingXxxl),
-
-              Text(
-                AppStrings.registerTitle,
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: colorScheme.onSurface,
+    return Scaffold(
+      backgroundColor: const Color(0xFF000000),
+      body: AuthMeshBackground(
+        primaryGlowColor: const Color(0xFF22D3EE),
+        secondaryGlowColor: const Color(0xFF818CF8),
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: AppDimensions.authMaxWidth),
+              child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDimensions.authHorizontalPadding,
+                  vertical: AppDimensions.spacingMd,
                 ),
-              ),
+                child: AutofillGroup(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Top Navigation Row ────────────────────────────────────
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            if (context.canPop())
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 20),
+                                onPressed: () => context.pop(),
+                                tooltip: 'Back',
+                              )
+                            else
+                              const SizedBox(width: 40),
 
-              const SizedBox(height: AppDimensions.spacingXs),
+                            InkWell(
+                              onTap: _openPersonaSheet,
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.bolt_rounded, size: 14, color: AppColors.primary),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      '⚡ Quick Demo',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
 
-              Text(
-                AppStrings.registerSubtitle,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
+                        const SizedBox(height: 12),
 
-              const SizedBox(height: AppDimensions.spacingXxxl),
+                        // ── Header Brand ─────────────────────────────────────────
+                        Center(
+                          child: Column(
+                            children: [
+                              const AppLogo(size: LogoSize.small),
+                              const SizedBox(height: 12),
+                              Text(
+                                AppStrings.registerTitle,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                AppStrings.registerSubtitle,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.white.withValues(alpha: 0.65),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
 
-              if (_errorMessage.isNotEmpty) ...[
-                ErrorMessage(
-                  message: _errorMessage,
-                  onDismiss: () => setState(() => _errorMessage = ''),
-                ),
-                const SizedBox(height: AppDimensions.spacingLg),
-              ],
+                        const SizedBox(height: 20),
 
-              // ── Full Name ─────────────────────────────────────────────────────
-              AppTextField(
-                label: AppStrings.fieldFullName,
-                hint: AppStrings.fieldFullNameHint,
-                controller: _nameController,
-                focusNode: _nameFocus,
-                keyboardType: TextInputType.name,
-                textInputAction: TextInputAction.next,
-                validator: AppValidators.fullName,
-                autofillHints: const [AutofillHints.name],
-                prefixIcon: Icons.person_outline_rounded,
-                onFieldSubmitted: (_) =>
-                    FocusScope.of(context).requestFocus(_emailFocus),
-              ),
+                        // ── Main Glass Card ──────────────────────────────────────
+                        AuthGlassCard(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_errorMessage.isNotEmpty) ...[
+                                ErrorMessage(
+                                  message: _errorMessage,
+                                  onDismiss: () => setState(() => _errorMessage = ''),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
 
-              const SizedBox(height: AppDimensions.authFormSpacing),
+                              // ── Full Name ────────────────────────────────────
+                              AppTextField(
+                                label: AppStrings.fieldFullName,
+                                hint: AppStrings.fieldFullNameHint,
+                                controller: _nameController,
+                                focusNode: _nameFocus,
+                                keyboardType: TextInputType.name,
+                                textInputAction: TextInputAction.next,
+                                validator: AppValidators.fullName,
+                                autofillHints: const [AutofillHints.name],
+                                prefixIcon: Icons.person_outline_rounded,
+                                onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_emailFocus),
+                              ),
 
-              // ── Email ─────────────────────────────────────────────────────────
-              AppTextField(
-                label: AppStrings.fieldEmail,
-                hint: AppStrings.fieldEmailHint,
-                controller: _emailController,
-                focusNode: _emailFocus,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                validator: AppValidators.email,
-                autofillHints: const [AutofillHints.email],
-                prefixIcon: Icons.email_outlined,
-                onFieldSubmitted: (_) =>
-                    FocusScope.of(context).requestFocus(_passwordFocus),
-              ),
+                              const SizedBox(height: 16),
 
-              const SizedBox(height: AppDimensions.authFormSpacing),
+                              // ── Email ────────────────────────────────────────
+                              AppTextField(
+                                label: AppStrings.fieldEmail,
+                                hint: AppStrings.fieldEmailHint,
+                                controller: _emailController,
+                                focusNode: _emailFocus,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                validator: AppValidators.email,
+                                autofillHints: const [AutofillHints.email],
+                                prefixIcon: Icons.email_outlined,
+                                onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_passwordFocus),
+                              ),
 
-              // ── Password ──────────────────────────────────────────────────────
-              PasswordField(
-                label: AppStrings.fieldPassword,
-                hint: AppStrings.fieldNewPasswordHint,
-                controller: _passwordController,
-                focusNode: _passwordFocus,
-                textInputAction: TextInputAction.next,
-                validator: AppValidators.password,
-                autofillHints: const [AutofillHints.newPassword],
-                onFieldSubmitted: (_) =>
-                    FocusScope.of(context).requestFocus(_confirmFocus),
-              ),
+                              const SizedBox(height: 16),
 
-              const SizedBox(height: AppDimensions.spacingSm),
+                              // ── Password ─────────────────────────────────────
+                              PasswordField(
+                                label: AppStrings.fieldPassword,
+                                hint: AppStrings.fieldNewPasswordHint,
+                                controller: _passwordController,
+                                focusNode: _passwordFocus,
+                                textInputAction: TextInputAction.next,
+                                validator: AppValidators.password,
+                                autofillHints: const [AutofillHints.newPassword],
+                                onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_confirmFocus),
+                              ),
 
-              // ── Password Strength ─────────────────────────────────────────────
-              PasswordStrengthIndicator(password: _passwordValue),
+                              const SizedBox(height: 10),
 
-              const SizedBox(height: AppDimensions.authFormSpacing),
+                              // ── Password Strength Bar ────────────────────────
+                              PasswordStrengthIndicator(password: _passwordValue),
 
-              // ── Confirm Password ──────────────────────────────────────────────
-              PasswordField(
-                label: AppStrings.fieldConfirmPassword,
-                hint: AppStrings.fieldConfirmPasswordHint,
-                controller: _confirmController,
-                focusNode: _confirmFocus,
-                textInputAction: TextInputAction.done,
-                validator: AppValidators.confirmPassword(_passwordController.text),
-                autofillHints: const [AutofillHints.newPassword],
-                onFieldSubmitted: (_) => _submit(),
-              ),
+                              if (_passwordValue.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                // Real-time Requirement Badges
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    _buildRequirementChip('8+ Chars', hasMinLength),
+                                    _buildRequirementChip('Uppercase', hasUppercase),
+                                    _buildRequirementChip('Number', hasNumber),
+                                    _buildRequirementChip('Symbol', hasSpecial),
+                                  ],
+                                ),
+                              ],
 
-              const SizedBox(height: AppDimensions.spacingXxl),
+                              const SizedBox(height: 16),
 
-              LoadingButton(
-                label: AppStrings.registerButton,
-                onPressed: _submit,
-                isLoading: auth.isLoading,
-              ),
+                              // ── Confirm Password ─────────────────────────────
+                              PasswordField(
+                                label: AppStrings.fieldConfirmPassword,
+                                hint: AppStrings.fieldConfirmPasswordHint,
+                                controller: _confirmController,
+                                focusNode: _confirmFocus,
+                                textInputAction: TextInputAction.done,
+                                validator: AppValidators.confirmPassword(_passwordController.text),
+                                autofillHints: const [AutofillHints.newPassword],
+                                onFieldSubmitted: (_) => _submit(),
+                              ),
 
-              const SizedBox(height: AppDimensions.spacingMd),
+                              const SizedBox(height: 20),
 
-              // ── Terms note ────────────────────────────────────────────────────
-              Text(
-                AppStrings.registerTerms,
-                style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
+                              // ── Submit Button ────────────────────────────────
+                              LoadingButton(
+                                label: AppStrings.registerButton,
+                                onPressed: _submit,
+                                isLoading: auth.isLoading,
+                                icon: Icons.person_add_rounded,
+                              ),
 
-              const SizedBox(height: AppDimensions.spacingXxl),
+                              const SizedBox(height: 12),
 
-              const AppDivider(label: AppStrings.registerOrContinueWith),
+                              // ── Terms & Privacy Notice ───────────────────────
+                              Text(
+                                AppStrings.registerTerms,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  height: 1.4,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
 
-              const SizedBox(height: AppDimensions.spacingXxl),
+                        const SizedBox(height: 20),
 
-              SocialLoginButton(
-                provider: SocialProvider.google,
-                onPressed: _signInWithGoogle,
-                isLoading: auth.isLoading,
-              ),
+                        // ── Divider ─────────────────────────────────────────────
+                        const AppDivider(label: AppStrings.registerOrContinueWith),
 
-              const SizedBox(height: AppDimensions.spacingXxxl),
+                        const SizedBox(height: 16),
 
-              Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      AppStrings.registerHaveAccount,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                        // ── Google One-Tap ──────────────────────────────────────
+                        SocialLoginButton(
+                          provider: SocialProvider.google,
+                          onPressed: _signInWithGoogle,
+                          isLoading: auth.isLoading,
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // ── Sign In Link ────────────────────────────────────────
+                        Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                AppStrings.registerHaveAccount,
+                                style: textTheme.bodyMedium?.copyWith(
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              AppTextButton(
+                                label: AppStrings.registerSignIn,
+                                onPressed: () => context.pop(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    AppTextButton(
-                      label: AppStrings.registerSignIn,
-                      onPressed: () => context.pop(),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
-}
 
+  Widget _buildRequirementChip(String label, bool passed) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: passed
+            ? AppColors.success.withValues(alpha: 0.15)
+            : Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: passed
+              ? AppColors.success.withValues(alpha: 0.5)
+              : const Color(0xFF27272A),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            passed ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+            size: 11,
+            color: passed ? AppColors.success : Colors.white38,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: passed ? AppColors.success : Colors.white60,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
