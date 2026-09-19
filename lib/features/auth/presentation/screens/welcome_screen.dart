@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
-import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../notifications/presentation/notification_provider.dart';
 import '../../../profile/presentation/profile_provider.dart';
@@ -196,20 +195,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                const AppLogo(size: LogoSize.small, animate: false),
-                                const SizedBox(width: 8),
-                                Text(
-                                  AppStrings.appName,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.5,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
+                            const AppLogo(
+                              variant: LogoVariant.full,
+                              height: 32,
+                              animate: false,
                             ),
                             InkWell(
                               onTap: _openPersonaSheet,

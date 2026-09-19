@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/constants/app_dimensions.dart';
-import '../../../../core/constants/app_strings.dart';
 
-/// ScholarSync brand mark.
-/// Shows an animated book icon with the app name wordmark.
+enum LogoSize { small, medium, large }
+enum LogoVariant { full, compact, icon }
+
+/// Official ScholarSync Brand Logo Widget.
+/// Renders the approved ScholarSync branding assets faithfully across light and dark contexts.
 class AppLogo extends StatefulWidget {
   const AppLogo({
     super.key,
     this.size = LogoSize.medium,
-    this.showTagline = false,
+    this.variant = LogoVariant.full,
+    this.isDark,
+    this.width,
+    this.height,
+    this.showTagline = true,
     this.animate = false,
   });
 
   final LogoSize size;
+  final LogoVariant variant;
+  final bool? isDark;
+  final double? width;
+  final double? height;
   final bool showTagline;
   final bool animate;
 
@@ -21,10 +29,7 @@ class AppLogo extends StatefulWidget {
   State<AppLogo> createState() => _AppLogoState();
 }
 
-enum LogoSize { small, medium, large }
-
-class _AppLogoState extends State<AppLogo>
-    with SingleTickerProviderStateMixin {
+class _AppLogoState extends State<AppLogo> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
@@ -34,11 +39,11 @@ class _AppLogoState extends State<AppLogo>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
     );
     _scaleAnimation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.elasticOut,
+      curve: Curves.easeOutBack,
     );
     _fadeAnimation = CurvedAnimation(
       parent: _controller,
@@ -57,107 +62,71 @@ class _AppLogoState extends State<AppLogo>
     super.dispose();
   }
 
-  double get _iconSize {
+  double get _defaultWidth {
+    if (widget.width != null) return widget.width!;
     switch (widget.size) {
       case LogoSize.small:
-        return AppDimensions.logoIconSize;
+        return widget.variant == LogoVariant.icon ? 36 : 140;
       case LogoSize.medium:
-        return AppDimensions.logoIconSizeLg;
+        return widget.variant == LogoVariant.icon ? 64 : 220;
       case LogoSize.large:
-        return AppDimensions.logoIconSizeXl;
+        return widget.variant == LogoVariant.icon ? 96 : 300;
     }
   }
 
-  double get _appNameFontSize {
-    switch (widget.size) {
-      case LogoSize.small:
-        return 18;
-      case LogoSize.medium:
-        return 24;
-      case LogoSize.large:
-        return 30;
+  String _getAssetPath(bool isDarkMode) {
+    switch (widget.variant) {
+      case LogoVariant.full:
+        return isDarkMode
+            ? 'assets/branding/scholarsync_logo_dark.png'
+            : 'assets/branding/scholarsync_logo_light.png';
+      case LogoVariant.compact:
+        return isDarkMode
+            ? 'assets/branding/scholarsync_wordmark_dark.png'
+            : 'assets/branding/scholarsync_wordmark_light.png';
+      case LogoVariant.icon:
+        return isDarkMode
+            ? 'assets/branding/scholarsync_icon_dark.png'
+            : 'assets/branding/scholarsync_icon_light.png';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final bool darkMode = widget.isDark ?? (Theme.of(context).brightness == Brightness.dark);
+    final String assetPath = _getAssetPath(darkMode);
+    final double targetWidth = _defaultWidth;
 
     return FadeTransition(
       opacity: _fadeAnimation,
       child: ScaleTransition(
         scale: _scaleAnimation,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Icon Container ───────────────────────────────────────────────
-            Container(
-              width: _iconSize,
-              height: _iconSize,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.auto_stories_rounded,
-                size: _iconSize * 0.55,
-                color: AppColors.textOnPrimary,
-              ),
-            ),
-
-            const SizedBox(height: AppDimensions.spacingSm),
-
-            // ── App Name ─────────────────────────────────────────────────────
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'Scholar',
-                    style: textTheme.headlineSmall?.copyWith(
-                      fontSize: _appNameFontSize,
-                      fontWeight: FontWeight.w700,
-                      color: colorScheme.onSurface,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'Sync',
-                    style: textTheme.headlineSmall?.copyWith(
-                      fontSize: _appNameFontSize,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.secondary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Tagline ───────────────────────────────────────────────────────
-            if (widget.showTagline) ...[
-              const SizedBox(height: AppDimensions.spacingXs),
-              Text(
-                AppStrings.appTagline,
-                style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  letterSpacing: 0.2,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: targetWidth,
+            maxHeight: widget.height ?? double.infinity,
+          ),
+          child: Image.asset(
+            assetPath,
+            width: targetWidth,
+            height: widget.height,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback if asset is loading or missing
+              return Text(
+                'SCHOLARSYNC',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: targetWidth * 0.1,
+                  color: darkMode ? Colors.white : Colors.black,
+                  letterSpacing: -0.5,
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 }
-

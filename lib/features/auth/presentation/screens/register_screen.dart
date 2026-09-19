@@ -239,7 +239,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Center(
                           child: Column(
                             children: [
-                              const AppLogo(size: LogoSize.small),
+                              const AppLogo(size: LogoSize.medium),
                               const SizedBox(height: 12),
                               Text(
                                 AppStrings.registerTitle,

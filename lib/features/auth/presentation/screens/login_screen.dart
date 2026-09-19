@@ -233,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         Center(
                           child: Column(
                             children: [
-                              const AppLogo(size: LogoSize.small),
+                              const AppLogo(size: LogoSize.medium),
                               const SizedBox(height: 12),
                               Text(
                                 isAdmin ? 'Admin Management Console' : AppStrings.loginTitle,

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../auth/auth_provider.dart';
+import '../../../../auth/presentation/widgets/app_logo.dart';
 import '../../../../auth/presentation/widgets/primary_button.dart';
 import '../../../../profile/presentation/profile_provider.dart';
 import '../../onboarding_provider.dart';
@@ -28,7 +29,8 @@ class WelcomeStep extends StatelessWidget {
       padding: const EdgeInsets.all(AppDimensions.spacingXxl),
       child: Column(
         children: [
-          const SizedBox(height: AppDimensions.spacingLg),
+          const AppLogo(variant: LogoVariant.full, width: 180),
+          const SizedBox(height: AppDimensions.spacingXl),
           // User Avatar / Logo Badge
           Container(
             width: 100,
