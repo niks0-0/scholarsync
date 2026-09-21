@@ -44,7 +44,8 @@ class StudyNote {
       description: json['description'] as String?,
       subjectId: json['subject_id'] as String? ?? '',
       subjectName: json['subjects'] != null && json['subjects'] is Map
-          ? (json['subjects'] as Map<String, dynamic>)['name'] as String?
+          ? ((json['subjects'] as Map<String, dynamic>)['subject_name'] ??
+              (json['subjects'] as Map<String, dynamic>)['name']) as String?
           : null,
       uploaderId: json['uploader_id'] as String? ?? '',
       uploaderName: json['profiles'] != null && json['profiles'] is Map

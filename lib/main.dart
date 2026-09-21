@@ -25,6 +25,12 @@ import 'features/storage/presentation/storage_provider.dart';
 import 'features/timetable/data/repositories/supabase_timetable_repository.dart';
 import 'features/timetable/domain/repositories/timetable_repository.dart';
 import 'features/timetable/presentation/timetable_provider.dart';
+import 'features/calendar/data/repositories/supabase_calendar_repository.dart';
+import 'features/calendar/domain/repositories/calendar_repository.dart';
+import 'features/calendar/presentation/calendar_provider.dart';
+import 'features/attendance/data/repositories/local_attendance_repository.dart';
+import 'features/attendance/domain/repositories/attendance_repository.dart';
+import 'features/attendance/presentation/attendance_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,6 +80,12 @@ class ScholarSyncApp extends StatelessWidget {
         Provider<AdminRepository>(
           create: (_) => const SupabaseAdminRepository(),
         ),
+        Provider<CalendarRepository>(
+          create: (_) => const SupabaseCalendarRepository(),
+        ),
+        Provider<AttendanceRepository>(
+          create: (_) => const LocalAttendanceRepository(),
+        ),
         ChangeNotifierProvider<ThemeService>(
           create: (_) => ThemeService(),
         ),
@@ -103,6 +115,12 @@ class ScholarSyncApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<TimetableProvider>(
           create: (_) => TimetableProvider(),
+        ),
+        ChangeNotifierProvider<CalendarProvider>(
+          create: (_) => CalendarProvider(),
+        ),
+        ChangeNotifierProvider<AttendanceProvider>(
+          create: (_) => AttendanceProvider(),
         ),
         ChangeNotifierProvider<AdminProvider>(
           create: (_) => AdminProvider(),

@@ -49,6 +49,7 @@ abstract final class AppDimensions {
   // ── Cards ─────────────────────────────────────────────────────────────────
   static const double cardElevation = 0.0;
   static const double cardBorderWidth = 1.0;
+  static const double cardPadding = 16.0;
   static const double cardPaddingSm = 16.0;
   static const double cardPaddingMd = 20.0;
   static const double cardPaddingLg = 24.0;

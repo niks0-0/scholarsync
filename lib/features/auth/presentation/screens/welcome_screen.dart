@@ -242,7 +242,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                         // ── Hero Carousel Glass Card ────────────────────────────
                         SizedBox(
-                          height: size.height * 0.32,
+                          height: (size.height * 0.33).clamp(210.0, 265.0),
                           child: PageView.builder(
                             controller: _pageController,
                             onPageChanged: (index) => setState(() => _currentPage = index),
@@ -252,11 +252,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               return Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 4),
                                 child: AuthGlassCard(
-                                  padding: const EdgeInsets.all(20),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                   hasActiveGlow: _currentPage == index,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
                                       Container(
                                         width: 58,
                                         height: 58,
@@ -322,8 +325,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     ],
                                   ),
                                 ),
-                              );
-                            },
+                              ),
+                            );
+                          },
                           ),
                         ),
 
@@ -463,6 +467,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           provider: SocialProvider.google,
                           onPressed: auth.isLoading ? null : _signInWithGoogle,
                           isLoading: auth.isLoading,
+                        ),
+
+                        const SizedBox(height: 6),
+                        TextButton.icon(
+                          icon: const Icon(Icons.palette_outlined, size: 16, color: AppColors.primary),
+                          label: const Text('🎨 Preview All 6 Screen Designs', style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.bold)),
+                          onPressed: () => context.push('/design-preview'),
                         ),
 
                         const SizedBox(height: AppDimensions.spacingSm),

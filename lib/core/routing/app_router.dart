@@ -30,10 +30,12 @@ import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/profile/presentation/profile_provider.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/search/presentation/screens/global_search_screen.dart';
-import '../../features/shared/placeholder_screen.dart';
 import '../../features/shell/presentation/screens/app_shell.dart';
 import '../../features/timetable/presentation/screens/timetable_screen.dart';
 import '../../features/chat/presentation/screens/chat_hub_screen.dart';
+import '../../features/calendar/presentation/screens/calendar_screen.dart';
+import '../../features/attendance/presentation/screens/attendance_screen.dart';
+import '../../features/shared/design_preview_screen.dart';
 
 /// GoRouter configuration for ScholarSync with Academic Identity Shell & Route Guards.
 ///
@@ -71,8 +73,8 @@ final GoRouter appRouter = GoRouter(
       '/search',
     ];
 
-    // Allow splash screen initialization
-    if (path == '/splash') return null;
+    // Allow splash screen and design preview initialization
+    if (path == '/splash' || path == '/design-preview') return null;
 
     // 1. Guard: Unauthenticated user accessing protected routes or /onboarding or /admin -> redirect to /welcome
     if (!isAuth && (protectedRoutes.contains(path) || path == '/onboarding' || path.startsWith('/admin'))) {
@@ -100,6 +102,13 @@ final GoRouter appRouter = GoRouter(
     return null;
   },
   routes: [
+    // ── Design Preview ────────────────────────────────────────────────────────
+    GoRoute(
+      path: '/design-preview',
+      name: 'design-preview',
+      builder: (context, state) => const DesignPreviewScreen(),
+    ),
+
     // ── Splash ──────────────────────────────────────────────────────────────
     GoRoute(
       path: '/splash',
@@ -175,6 +184,13 @@ final GoRouter appRouter = GoRouter(
       path: '/timetable',
       name: 'timetable',
       builder: (context, state) => const TimetableScreen(),
+    ),
+
+    // ── Attendance Tracker Full Screen Route ──────────────────────────────────
+    GoRoute(
+      path: '/attendance',
+      name: 'attendance',
+      builder: (context, state) => const AttendanceScreen(),
     ),
 
     // ── Admin Shell & Routes ─────────────────────────────────────────────────
@@ -276,7 +292,7 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: '/calendar',
               name: 'calendar',
-              builder: (context, state) => const PlaceholderScreen(title: 'Calendar'),
+              builder: (context, state) => const CalendarScreen(),
             ),
           ],
         ),

@@ -347,7 +347,7 @@ class SupabaseAdminRepository implements AdminRepository {
   Future<List<StudyNote>> fetchNotes({String? status, String? query}) async {
     try {
       final client = SupabaseService.instance.client;
-      var req = client.from('notes').select('*, profiles(full_name), subjects(name)').eq('is_deleted', false);
+      var req = client.from('notes').select('*, profiles(full_name), subjects(subject_name)').eq('is_deleted', false);
 
       if (status != null && status.isNotEmpty) {
         req = req.eq('status', status);
@@ -373,7 +373,7 @@ class SupabaseAdminRepository implements AdminRepository {
       if (payload['id'] == null || (payload['id'] as String).isEmpty) {
         payload.remove('id');
       }
-      final res = await client.from('notes').insert(payload).select('*, profiles(full_name), subjects(name)').single();
+      final res = await client.from('notes').insert(payload).select('*, profiles(full_name), subjects(subject_name)').single();
       return StudyNote.fromJson(res);
     } catch (e) {
       debugPrint('Error creating study note: $e');
@@ -616,7 +616,7 @@ class SupabaseAdminRepository implements AdminRepository {
       final client = SupabaseService.instance.client;
       final List<dynamic> res = await client
           .from('messages')
-          .select('*, sender:profiles(full_name, avatar_url)')
+          .select('*, sender:profiles!messages_sender_id_fkey(full_name, avatar_url)')
           .eq('room_id', roomId)
           .eq('is_deleted', false)
           .order('created_at', ascending: false)

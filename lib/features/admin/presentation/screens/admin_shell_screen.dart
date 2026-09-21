@@ -108,143 +108,151 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             backgroundColor: colorScheme.surface,
             body: Row(
               children: [
-                NavigationRail(
-                  selectedIndex: selectedIndex,
-                  onDestinationSelected: _onDestinationSelected,
-                  backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                  extended: constraints.maxWidth >= 1100,
-                  minExtendedWidth: 220,
-                  leading: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
-                          ),
-                          child: const Icon(Icons.shield_rounded, size: 20, color: AppColors.textPrimary),
-                        ),
-                        if (constraints.maxWidth >= 1100) ...[
-                          const SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: NavigationRail(
+                        selectedIndex: selectedIndex,
+                        onDestinationSelected: _onDestinationSelected,
+                        backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        extended: constraints.maxWidth >= 1100,
+                        minExtendedWidth: 220,
+                        leading: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                'ScholarSync',
-                                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                              ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.secondary.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
                                 ),
-                                child: Text(
-                                  'MASTER ADMIN',
-                                  style: textTheme.labelSmall?.copyWith(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.secondary,
-                                  ),
-                                ),
+                                child: const Icon(Icons.shield_rounded, size: 20, color: AppColors.textPrimary),
                               ),
+                              if (constraints.maxWidth >= 1100) ...[
+                                const SizedBox(width: 10),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'ScholarSync',
+                                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.secondary.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'MASTER ADMIN',
+                                        style: textTheme.labelSmall?.copyWith(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.secondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  trailing: Expanded(
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: IconButton.outlined(
-                          tooltip: 'Switch to Student View',
-                          icon: const Icon(Icons.exit_to_app_rounded),
-                          onPressed: () => context.go('/home'),
                         ),
+                        trailing: Expanded(
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 20),
+                              child: IconButton.outlined(
+                                tooltip: 'Switch to Student View',
+                                icon: const Icon(Icons.exit_to_app_rounded),
+                                onPressed: () => context.go('/home'),
+                              ),
+                            ),
+                          ),
+                        ),
+                        destinations: [
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.dashboard_outlined),
+                            selectedIcon: Icon(Icons.dashboard_rounded),
+                            label: Text('Overview'),
+                          ),
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.menu_book_outlined),
+                            selectedIcon: Icon(Icons.menu_book_rounded),
+                            label: Text('Curriculum'),
+                          ),
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.account_balance_outlined),
+                            selectedIcon: Icon(Icons.account_balance_rounded),
+                            label: Text('Colleges'),
+                          ),
+                          NavigationRailDestination(
+                            icon: Badge(
+                              isLabelVisible: admin.analytics.pendingNotes > 0,
+                              label: Text('${admin.analytics.pendingNotes}'),
+                              child: const Icon(Icons.folder_open_outlined),
+                            ),
+                            selectedIcon: const Icon(Icons.folder_rounded),
+                            label: const Text('Study Notes'),
+                          ),
+                          NavigationRailDestination(
+                            icon: Badge(
+                              isLabelVisible: admin.analytics.pendingReports > 0,
+                              label: Text('${admin.analytics.pendingReports}'),
+                              child: const Icon(Icons.gavel_outlined),
+                            ),
+                            selectedIcon: const Icon(Icons.gavel_rounded),
+                            label: const Text('Moderation'),
+                          ),
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.forum_outlined),
+                            selectedIcon: Icon(Icons.forum_rounded),
+                            label: Text('Chat Rooms'),
+                          ),
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.calendar_month_outlined),
+                            selectedIcon: Icon(Icons.calendar_month_rounded),
+                            label: Text('Calendar'),
+                          ),
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.event_available_outlined),
+                            selectedIcon: Icon(Icons.event_available_rounded),
+                            label: Text('Events'),
+                          ),
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.storefront_outlined),
+                            selectedIcon: Icon(Icons.storefront_rounded),
+                            label: Text('Marketplace'),
+                          ),
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.groups_2_outlined),
+                            selectedIcon: Icon(Icons.groups_2_rounded),
+                            label: Text('Clubs'),
+                          ),
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.dynamic_feed_outlined),
+                            selectedIcon: Icon(Icons.dynamic_feed_rounded),
+                            label: Text('Community'),
+                          ),
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.campaign_outlined),
+                            selectedIcon: Icon(Icons.campaign_rounded),
+                            label: Text('Broadcasts'),
+                          ),
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.people_outline_rounded),
+                            selectedIcon: Icon(Icons.people_rounded),
+                            label: Text('Students'),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  destinations: [
-                    const NavigationRailDestination(
-                      icon: Icon(Icons.dashboard_outlined),
-                      selectedIcon: Icon(Icons.dashboard_rounded),
-                      label: Text('Overview'),
-                    ),
-                    const NavigationRailDestination(
-                      icon: Icon(Icons.menu_book_outlined),
-                      selectedIcon: Icon(Icons.menu_book_rounded),
-                      label: Text('Curriculum'),
-                    ),
-                    const NavigationRailDestination(
-                      icon: Icon(Icons.account_balance_outlined),
-                      selectedIcon: Icon(Icons.account_balance_rounded),
-                      label: Text('Colleges'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Badge(
-                        isLabelVisible: admin.analytics.pendingNotes > 0,
-                        label: Text('${admin.analytics.pendingNotes}'),
-                        child: const Icon(Icons.folder_open_outlined),
-                      ),
-                      selectedIcon: const Icon(Icons.folder_rounded),
-                      label: const Text('Study Notes'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Badge(
-                        isLabelVisible: admin.analytics.pendingReports > 0,
-                        label: Text('${admin.analytics.pendingReports}'),
-                        child: const Icon(Icons.gavel_outlined),
-                      ),
-                      selectedIcon: const Icon(Icons.gavel_rounded),
-                      label: const Text('Moderation'),
-                    ),
-                    const NavigationRailDestination(
-                      icon: Icon(Icons.forum_outlined),
-                      selectedIcon: Icon(Icons.forum_rounded),
-                      label: Text('Chat Rooms'),
-                    ),
-                    const NavigationRailDestination(
-                      icon: Icon(Icons.calendar_month_outlined),
-                      selectedIcon: Icon(Icons.calendar_month_rounded),
-                      label: Text('Calendar'),
-                    ),
-                    const NavigationRailDestination(
-                      icon: Icon(Icons.event_available_outlined),
-                      selectedIcon: Icon(Icons.event_available_rounded),
-                      label: Text('Events'),
-                    ),
-                    const NavigationRailDestination(
-                      icon: Icon(Icons.storefront_outlined),
-                      selectedIcon: Icon(Icons.storefront_rounded),
-                      label: Text('Marketplace'),
-                    ),
-                    const NavigationRailDestination(
-                      icon: Icon(Icons.groups_2_outlined),
-                      selectedIcon: Icon(Icons.groups_2_rounded),
-                      label: Text('Clubs'),
-                    ),
-                    const NavigationRailDestination(
-                      icon: Icon(Icons.dynamic_feed_outlined),
-                      selectedIcon: Icon(Icons.dynamic_feed_rounded),
-                      label: Text('Community'),
-                    ),
-                    const NavigationRailDestination(
-                      icon: Icon(Icons.campaign_outlined),
-                      selectedIcon: Icon(Icons.campaign_rounded),
-                      label: Text('Broadcasts'),
-                    ),
-                    const NavigationRailDestination(
-                      icon: Icon(Icons.people_outline_rounded),
-                      selectedIcon: Icon(Icons.people_rounded),
-                      label: Text('Students'),
-                    ),
-                  ],
                 ),
                 const VerticalDivider(thickness: 1, width: 1),
                 Expanded(child: widget.child),

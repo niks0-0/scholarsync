@@ -35,7 +35,7 @@ class QuickActionsGrid extends StatelessWidget {
       _QuickActionItem(
         icon: Icons.fact_check_outlined,
         label: 'Open Attendance',
-        route: '/timetable',
+        route: '/attendance',
       ),
       _QuickActionItem(
         icon: Icons.calendar_month_rounded,
