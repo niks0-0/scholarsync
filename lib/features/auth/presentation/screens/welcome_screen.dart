@@ -78,6 +78,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         curve: Curves.easeInOutCubic,
       );
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final auth = context.read<AuthProvider>();
+        if (auth.isAuthenticated) {
+          auth.signOut();
+        }
+      }
+    });
   }
 
   @override
@@ -183,65 +192,66 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: AppDimensions.authMaxWidth),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppDimensions.authHorizontalPadding,
-                      vertical: AppDimensions.spacingMd,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // ── Top Bar with Logo & Demo Switcher ───────────────────
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const AppLogo(
-                              variant: LogoVariant.full,
-                              height: 32,
-                              animate: false,
-                            ),
-                            InkWell(
-                              onTap: _openPersonaSheet,
-                              borderRadius: BorderRadius.circular(20),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.bolt_rounded, size: 14, color: AppColors.primary),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Quick Demo',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppDimensions.authHorizontalPadding,
+                        vertical: AppDimensions.spacingMd,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // ── Top Bar with Logo & Demo Switcher ───────────────────
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const AppLogo(
+                                variant: LogoVariant.full,
+                                height: 32,
+                                animate: false,
+                              ),
+                              InkWell(
+                                onTap: _openPersonaSheet,
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.bolt_rounded, size: 14, color: AppColors.primary),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Quick Demo',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
+                            ],
+                          ),
+
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: AppDimensions.spacingMd),
+                            ErrorMessage(
+                              message: _errorMessage!,
+                              onDismiss: () => setState(() => _errorMessage = null),
                             ),
                           ],
-                        ),
 
-                        if (_errorMessage != null) ...[
-                          const SizedBox(height: AppDimensions.spacingMd),
-                          ErrorMessage(
-                            message: _errorMessage!,
-                            onDismiss: () => setState(() => _errorMessage = null),
-                          ),
-                        ],
+                          const SizedBox(height: 16),
 
-                        const Spacer(flex: 1),
-
-                        // ── Hero Carousel Glass Card ────────────────────────────
-                        SizedBox(
+                          // ── Hero Carousel Glass Card ────────────────────────────
+                          SizedBox(
                           height: (size.height * 0.33).clamp(210.0, 265.0),
                           child: PageView.builder(
                             controller: _pageController,
@@ -351,7 +361,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           }),
                         ),
 
-                        const Spacer(flex: 1),
+                        const SizedBox(height: 20),
 
                         // ── Main Headline ───────────────────────────────────────
                         RichText(
@@ -391,7 +401,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         ),
 
-                        const Spacer(flex: 2),
+                        const SizedBox(height: 24),
 
                         // ── Action Buttons ──────────────────────────────────────
                         // 1. Get Started Primary Button with Electric Cyan Gradient
@@ -486,6 +496,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }

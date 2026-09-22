@@ -5,6 +5,7 @@ import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../auth/auth_provider.dart';
 import '../../../../auth/presentation/widgets/primary_button.dart';
+import '../../../../profile/domain/models/user_profile.dart';
 import '../../../../profile/domain/repositories/profile_repository.dart';
 import '../../../../profile/presentation/profile_provider.dart';
 import '../../onboarding_provider.dart';
@@ -22,47 +23,106 @@ class CompletionStep extends StatelessWidget {
     final profileProvider = context.read<ProfileProvider>();
     final onboarding = context.read<OnboardingProvider>();
     final profileRepo = context.read<ProfileRepository>();
-    final currentProfile = profileProvider.profile;
 
-    if (currentProfile == null || auth.currentUser == null) {
+    if (auth.currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Session error. Please sign in again.'),
+          content: Text('Session expired. Please sign in again.'),
           backgroundColor: AppColors.error,
         ),
       );
       return;
     }
 
-    final updatedProfile = await onboarding.completeOnboarding(
-      currentProfile: currentProfile,
-      profileRepository: profileRepo,
-    );
-
-    if (context.mounted) {
-      if (updatedProfile != null) {
-        // Refresh authenticated profile state in ProfileProvider
-        await profileProvider.syncProfile(
-          firebaseUid: auth.currentUser!.uid,
-          email: auth.currentUser!.email ?? '',
-          fullName: updatedProfile.fullName,
-          avatarUrl: updatedProfile.avatarUrl,
+    final user = auth.currentUser!;
+    final currentProfile = profileProvider.profile ??
+        UserProfile(
+          id: user.uid,
+          email: user.email ?? '',
+          fullName: onboarding.fullName.isNotEmpty ? onboarding.fullName : user.displayNameOrEmail,
+          authProvider: 'password',
         );
 
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Onboarding completed successfully! Welcome to ScholarSync.'),
-              backgroundColor: AppColors.success,
+    // Show persistent saving dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => PopScope(
+        canPop: false,
+        child: Dialog(
+          backgroundColor: const Color(0xFF141418),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusLg)),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: AppColors.primary),
+                SizedBox(height: 20),
+                Text(
+                  'Finalizing Academic Identity...',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Saving your verified profile and preparing your personal campus feed.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-          );
-          // Navigate to home screen
-          context.go('/home');
-        }
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final updatedProfile = await onboarding.completeOnboarding(
+        currentProfile: currentProfile,
+        profileRepository: profileRepo,
+      );
+
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // Dismiss loading dialog
+
+      if (updatedProfile != null) {
+        // Guarantee in-memory profile completion state
+        final completedProfile = updatedProfile.copyWith(onboardingCompleted: true);
+        profileProvider.setProfile(completedProfile);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text('Welcome to ScholarSync! Your academic profile is ready.'),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 3),
+          ),
+        );
+
+        // Smoothly route to home
+        context.go('/home');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(onboarding.error ?? 'Failed to complete onboarding. Please try again.'),
+            content: Text(onboarding.error ?? 'Failed to finalize profile. Please retry.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Dismiss loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving onboarding: $e'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -145,8 +205,20 @@ class CompletionStep extends StatelessWidget {
                 _buildSummaryRow(context, 'Branch:', onboarding.branch),
                 _buildSummaryRow(context, 'Semester:', 'Semester ${onboarding.semester}'),
                 _buildSummaryRow(context, 'Division:', 'Division ${onboarding.division}'),
-                _buildSummaryRow(context, 'Reminders:', onboarding.reminderPreference),
-                _buildSummaryRow(context, 'Notifications:', onboarding.notificationsEnabled ? 'Enabled' : 'Disabled'),
+                _buildSummaryRow(
+                  context,
+                  'Verification:',
+                  onboarding.isEmailVerified
+                      ? '✓ Instant Email Verified'
+                      : (onboarding.idCardBytes != null
+                          ? '🛡️ Queued for Admin Review'
+                          : 'Pending Verification'),
+                ),
+                _buildSummaryRow(
+                  context,
+                  'Legal Terms:',
+                  onboarding.legalUndertakingAccepted ? '✓ Self-Concern Guaranteed' : 'Pending',
+                ),
               ],
             ),
           ),

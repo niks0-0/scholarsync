@@ -35,6 +35,7 @@ import '../../features/timetable/presentation/screens/timetable_screen.dart';
 import '../../features/chat/presentation/screens/chat_hub_screen.dart';
 import '../../features/calendar/presentation/screens/calendar_screen.dart';
 import '../../features/attendance/presentation/screens/attendance_screen.dart';
+import '../../features/leaderboard/presentation/screens/leaderboard_screen.dart';
 import '../../features/shared/design_preview_screen.dart';
 
 /// GoRouter configuration for ScholarSync with Academic Identity Shell & Route Guards.
@@ -67,6 +68,7 @@ final GoRouter appRouter = GoRouter(
       '/timetable',
       '/resources',
       '/attendance',
+      '/leaderboard',
       '/community',
       '/profile',
       '/notifications',
@@ -94,9 +96,9 @@ final GoRouter appRouter = GoRouter(
       }
     }
 
-    // 4. Guard: Authenticated user with onboardingCompleted == true accessing /onboarding or login flow -> redirect to /home
+    // 4. Guard: Authenticated user with onboardingCompleted == true accessing /onboarding or login flow -> redirect to /admin or /home
     if (isAuth && isOnboardingDone && (path == '/onboarding' || publicAuthRoutes.contains(path))) {
-      return '/home';
+      return (role?.isAdmin ?? false) ? '/admin' : '/home';
     }
 
     return null;
@@ -191,6 +193,13 @@ final GoRouter appRouter = GoRouter(
       path: '/attendance',
       name: 'attendance',
       builder: (context, state) => const AttendanceScreen(),
+    ),
+
+    // ── Leaderboard Full Screen Route ─────────────────────────────────────────
+    GoRoute(
+      path: '/leaderboard',
+      name: 'leaderboard',
+      builder: (context, state) => const LeaderboardScreen(),
     ),
 
     // ── Admin Shell & Routes ─────────────────────────────────────────────────

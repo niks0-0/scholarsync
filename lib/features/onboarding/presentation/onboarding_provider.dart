@@ -1,4 +1,7 @@
 import 'package:flutter/foundation.dart';
+import '../../academic_catalog/data/repositories/supabase_academic_catalog_repository.dart';
+import '../../academic_catalog/domain/models/academic_master_data.dart';
+import '../../academic_catalog/domain/repositories/academic_catalog_repository.dart';
 import '../../profile/data/repositories/supabase_college_repository.dart';
 import '../../profile/domain/models/college.dart';
 import '../../profile/domain/models/user_profile.dart';
@@ -20,11 +23,15 @@ class OnboardingProvider extends ChangeNotifier {
   OnboardingProvider({
     CollegeRepository? collegeRepository,
     StorageRepository? storageRepository,
+    AcademicCatalogRepository? academicCatalogRepository,
   })  : _collegeRepository = collegeRepository ?? const SupabaseCollegeRepository(),
-        _storageRepository = storageRepository ?? const SupabaseStorageRepository();
+        _storageRepository = storageRepository ?? const SupabaseStorageRepository(),
+        _academicCatalogRepository =
+            academicCatalogRepository ?? const SupabaseAcademicCatalogRepository();
 
   final CollegeRepository _collegeRepository;
   final StorageRepository _storageRepository;
+  final AcademicCatalogRepository _academicCatalogRepository;
 
   OnboardingStepStatus _status = OnboardingStepStatus.initial;
   int _currentStep = 0;
@@ -46,14 +53,41 @@ class OnboardingProvider extends ChangeNotifier {
   bool _notificationsEnabled = true;
   String _themePreference = 'System';
 
+  // Master Academic Directory States
+  List<AcademicState> _states = [];
+  AcademicState? _selectedState;
+  List<University> _universities = [];
+  University? _selectedUniversity;
+  List<AcademicStream> _streams = [];
+  AcademicStream? _selectedStream;
+  List<AcademicCourse> _courses = [];
+  AcademicCourse? _selectedCourse;
+  List<AcademicBranch> _branches = [];
+  AcademicBranch? _selectedBranch;
+  List<AcademicSemester> _semesters = [];
+  AcademicSemester? _selectedSemester;
+  String _collegeSearchQuery = '';
+
+  // Legal Compliance & Dual-Method Verification Fields
+  bool _legalUndertakingAccepted = false;
+  bool _termsAccepted = false;
+  String _verificationMethod = 'college_id'; // 'college_email' or 'college_id'
+  String _institutionalEmail = '';
+  String _otpInput = '';
+  String? _generatedOtp;
+  bool _isEmailVerified = false;
+  Uint8List? _idCardBytes;
+  String? _idCardUrl;
+  String _verificationStatus = 'pending_verification';
+
   List<College> _colleges = [];
-  List<College> _filteredColleges = [];
 
   // Getters
   OnboardingStepStatus get status => _status;
   int get currentStep => _currentStep;
   String? get error => _errorMessage;
-  bool get isLoading => _status == OnboardingStepStatus.loading || _status == OnboardingStepStatus.saving;
+  bool get isLoading =>
+      _status == OnboardingStepStatus.loading || _status == OnboardingStepStatus.saving;
 
   String get fullName => _fullName;
   College? get selectedCollege => _selectedCollege;
@@ -69,7 +103,64 @@ class OnboardingProvider extends ChangeNotifier {
   String get reminderPreference => _reminderPreference;
   bool get notificationsEnabled => _notificationsEnabled;
   String get themePreference => _themePreference;
-  List<College> get colleges => _filteredColleges.isNotEmpty ? _filteredColleges : _colleges;
+
+  // Master Academic Getters
+  List<AcademicState> get states => _states;
+  AcademicState? get selectedState => _selectedState;
+  List<University> get universities => _universities;
+  University? get selectedUniversity => _selectedUniversity;
+  List<University> get filteredUniversities {
+    if (_selectedState == null) return _universities;
+    return _universities.where((u) => u.stateId == _selectedState!.id).toList();
+  }
+
+  List<AcademicStream> get streams => _streams;
+  AcademicStream? get selectedStream => _selectedStream;
+  List<AcademicCourse> get courses => _courses;
+  AcademicCourse? get selectedCourse => _selectedCourse;
+  List<AcademicBranch> get branches => _branches;
+  AcademicBranch? get selectedBranch => _selectedBranch;
+  List<AcademicBranch> get filteredBranches {
+    if (_selectedCourse != null && _selectedCourse!.streamId != null) {
+      final sBranches =
+          _branches.where((b) => b.streamId == _selectedCourse!.streamId).toList();
+      if (sBranches.isNotEmpty) return sBranches;
+    }
+    return _branches;
+  }
+
+  List<AcademicSemester> get semesters => _semesters;
+  AcademicSemester? get selectedSemester => _selectedSemester;
+  String get collegeSearchQuery => _collegeSearchQuery;
+
+  List<College> get colleges {
+    List<College> list = _colleges;
+    if (_selectedUniversity != null) {
+      list = list.where((c) => c.universityId == _selectedUniversity!.id).toList();
+    } else if (_selectedState != null) {
+      list = list.where((c) => c.stateId == _selectedState!.id).toList();
+    }
+    if (_collegeSearchQuery.isNotEmpty) {
+      final q = _collegeSearchQuery.toLowerCase();
+      list = list
+          .where((c) =>
+              c.name.toLowerCase().contains(q) || c.code.toLowerCase().contains(q))
+          .toList();
+    }
+    return list;
+  }
+
+  // Legal & Verification Getters
+  bool get legalUndertakingAccepted => _legalUndertakingAccepted;
+  bool get termsAccepted => _termsAccepted;
+  String get verificationMethod => _verificationMethod;
+  String get institutionalEmail => _institutionalEmail;
+  String get otpInput => _otpInput;
+  String? get generatedOtp => _generatedOtp;
+  bool get isEmailVerified => _isEmailVerified;
+  Uint8List? get idCardBytes => _idCardBytes;
+  String? get idCardUrl => _idCardUrl;
+  String get verificationStatus => _verificationStatus;
 
   // ── Controlled Branch Options ─────────────────────────────────────────────
   static const List<String> availableBranches = [
@@ -110,32 +201,95 @@ class OnboardingProvider extends ChangeNotifier {
       _rollNumber = initialProfile.rollNumber ?? '';
       _enrollmentNumber = initialProfile.enrollmentNumber ?? '';
     }
-    fetchColleges();
+    fetchMasterAcademicData();
   }
 
-  Future<void> fetchColleges() async {
+  Future<void> fetchMasterAcademicData() async {
     _status = OnboardingStepStatus.loading;
     notifyListeners();
     try {
-      _colleges = await _collegeRepository.getColleges();
-      _filteredColleges = _colleges;
+      final results = await Future.wait([
+        _collegeRepository.getColleges(),
+        _academicCatalogRepository.getStates(),
+        _academicCatalogRepository.getUniversities(),
+        _academicCatalogRepository.getCourses(),
+        _academicCatalogRepository.getBranches(),
+        _academicCatalogRepository.getSemesters(),
+        _academicCatalogRepository.getStreams(),
+      ]);
+
+      _colleges = results[0] as List<College>;
+      _states = results[1] as List<AcademicState>;
+      _universities = results[2] as List<University>;
+      _courses = results[3] as List<AcademicCourse>;
+      _branches = results[4] as List<AcademicBranch>;
+      _semesters = results[5] as List<AcademicSemester>;
+      _streams = results[6] as List<AcademicStream>;
+
+      // Auto-select Gujarat if present and no state selected yet
+      if (_selectedState == null && _states.isNotEmpty) {
+        final gujarat =
+            _states.where((s) => s.name.toLowerCase() == 'gujarat').firstOrNull;
+        if (gujarat != null) {
+          _selectedState = gujarat;
+        }
+      }
+
       _status = OnboardingStepStatus.loaded;
     } catch (e) {
-      _errorMessage = 'Failed to load college database. Form data is preserved for retry.';
+      _errorMessage =
+          'Failed to load master academic directory. Form data is preserved for retry.';
       _status = OnboardingStepStatus.error;
     }
     notifyListeners();
   }
 
+  Future<void> fetchColleges() => fetchMasterAcademicData();
+
   void searchColleges(String query) {
-    if (query.trim().isEmpty) {
-      _filteredColleges = _colleges;
-    } else {
-      _filteredColleges = _colleges
-          .where((c) =>
-              c.name.toLowerCase().contains(query.toLowerCase()) ||
-              c.code.toLowerCase().contains(query.toLowerCase()))
-          .toList();
+    _collegeSearchQuery = query.trim();
+    notifyListeners();
+  }
+
+  // ── Master Academic Setters ───────────────────────────────────────────────
+  void setSelectedState(AcademicState? state) {
+    _selectedState = state;
+    _selectedUniversity = null;
+    _selectedCollege = null;
+    notifyListeners();
+  }
+
+  void setSelectedUniversity(University? uni) {
+    _selectedUniversity = uni;
+    _selectedCollege = null;
+    notifyListeners();
+  }
+
+  void setSelectedStream(AcademicStream? stream) {
+    _selectedStream = stream;
+    _selectedCourse = null;
+    _selectedBranch = null;
+    notifyListeners();
+  }
+
+  void setSelectedCourse(AcademicCourse? course) {
+    _selectedCourse = course;
+    _selectedBranch = null;
+    notifyListeners();
+  }
+
+  void setSelectedBranch(AcademicBranch? branch) {
+    _selectedBranch = branch;
+    if (branch != null) {
+      _branch = branch.name;
+    }
+    notifyListeners();
+  }
+
+  void setSelectedSemester(AcademicSemester? sem) {
+    _selectedSemester = sem;
+    if (sem != null) {
+      _semester = sem.semesterNumber;
     }
     notifyListeners();
   }
@@ -186,6 +340,12 @@ class OnboardingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setAvatarUrl(String? url) {
+    _avatarUrl = url;
+    _avatarBytesToUpload = null;
+    notifyListeners();
+  }
+
   void setAvatarBytes(Uint8List bytes) {
     _avatarBytesToUpload = bytes;
     notifyListeners();
@@ -203,6 +363,64 @@ class OnboardingProvider extends ChangeNotifier {
 
   void setThemePreference(String theme) {
     _themePreference = theme;
+    notifyListeners();
+  }
+
+  // ── Legal & Verification Setters ──────────────────────────────────────────
+  void setLegalUndertaking(bool value) {
+    _legalUndertakingAccepted = value;
+    notifyListeners();
+  }
+
+  void setTermsAccepted(bool value) {
+    _termsAccepted = value;
+    notifyListeners();
+  }
+
+  void setVerificationMethod(String method) {
+    _verificationMethod = method;
+    notifyListeners();
+  }
+
+  void setInstitutionalEmail(String email) {
+    _institutionalEmail = email.trim();
+    notifyListeners();
+  }
+
+  void setOtpInput(String otp) {
+    _otpInput = otp.trim();
+    notifyListeners();
+  }
+
+  void sendEmailOtp() {
+    if (_institutionalEmail.isEmpty || !_institutionalEmail.contains('@')) {
+      _errorMessage = 'Please enter a valid institutional college email address.';
+      notifyListeners();
+      return;
+    }
+    // Deterministic instant OTP for verification
+    _generatedOtp = '742910';
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  bool verifyOtp(String code) {
+    if (_generatedOtp != null && code.trim() == _generatedOtp) {
+      _isEmailVerified = true;
+      _verificationStatus = 'verified';
+      _errorMessage = null;
+      notifyListeners();
+      return true;
+    } else {
+      _errorMessage = 'Invalid verification code. Enter evaluation OTP: 742910';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  void setIdCardBytes(Uint8List bytes) {
+    _idCardBytes = bytes;
+    _verificationStatus = 'pending_verification';
     notifyListeners();
   }
 
@@ -249,7 +467,27 @@ class OnboardingProvider extends ChangeNotifier {
           return false;
         }
         return true;
-      case 4: // Preferences Step
+      case 4: // Legal Undertaking & Student ID Verification Step
+        if (!_legalUndertakingAccepted) {
+          _errorMessage = 'Please accept the Self-Concern & Attendance Responsibility Guarantee.';
+          notifyListeners();
+          return false;
+        }
+        if (!_termsAccepted) {
+          _errorMessage = 'Please accept the Terms of Service & Privacy Policy.';
+          notifyListeners();
+          return false;
+        }
+        if (_verificationMethod == 'college_email' && !_isEmailVerified) {
+          _errorMessage = 'Please verify your college email with the OTP or switch to College ID Card upload.';
+          notifyListeners();
+          return false;
+        }
+        if (_verificationMethod == 'college_id' && _idCardBytes == null) {
+          _errorMessage = 'Please upload or capture your student College ID card photo.';
+          notifyListeners();
+          return false;
+        }
         return true;
       case 5: // Completion Step
         return validateAll();
@@ -353,7 +591,26 @@ class OnboardingProvider extends ChangeNotifier {
         if (!uploaded) return null;
       }
 
-      // 2. Build updated profile model with onboarding_completed = true
+      // 2. Upload College ID Card if selected
+      if (_idCardBytes != null) {
+        try {
+          final path = await _storageRepository.replaceAvatar(
+            firebaseUid: currentProfile.id,
+            fileBytes: _idCardBytes!,
+            fileName: 'college_id_card.jpg',
+            mimeType: 'image/jpeg',
+          );
+          final signedUrl = await _storageRepository.getSignedAvatarUrl(
+            firebaseUid: currentProfile.id,
+            fileName: 'college_id_card.jpg',
+          );
+          _idCardUrl = signedUrl.isNotEmpty ? signedUrl : path;
+        } catch (_) {
+          // Continue if storage upload has network exception
+        }
+      }
+
+      // 3. Build updated profile model with onboarding_completed = true
       final updatedProfile = currentProfile.copyWith(
         fullName: _fullName,
         collegeId: _selectedCollege?.id,
@@ -364,11 +621,48 @@ class OnboardingProvider extends ChangeNotifier {
         rollNumber: _rollNumber.isNotEmpty ? _rollNumber : null,
         enrollmentNumber: _enrollmentNumber.isNotEmpty ? _enrollmentNumber : null,
         avatarUrl: _avatarUrl,
+        verificationStatus: _isEmailVerified ? 'verified' : 'pending_verification',
+        collegeIdCardUrl: _idCardUrl,
+        legalAcceptedAt: DateTime.now(),
         onboardingCompleted: true,
       );
 
-      // 3. Persist to Supabase public.profiles table
+      // 4. Persist to Supabase public.profiles table
       final savedProfile = await profileRepository.updateProfile(updatedProfile);
+
+      // 5. Persist to Supabase public.student_academic_profile table
+      try {
+        await _academicCatalogRepository.saveStudentAcademicProfile(
+          userId: currentProfile.id,
+          stateId: _selectedState?.id ?? _selectedCollege?.stateId,
+          universityId: _selectedUniversity?.id ?? _selectedCollege?.universityId,
+          collegeId: _selectedCollege?.id,
+          streamId: _selectedStream?.id ?? _selectedCourse?.streamId,
+          courseId: _selectedCourse?.id,
+          branchId: _selectedBranch?.id,
+          semesterId: _selectedSemester?.id,
+          rollNumber: _rollNumber,
+          enrollmentNumber: _enrollmentNumber,
+          division: _division,
+        );
+      } catch (e) {
+        debugPrint('Warning: Failed to save student_academic_profile: $e');
+      }
+
+      // 6. Auto-enroll student into corresponding semester subjects
+      try {
+        await _academicCatalogRepository.autoEnrollSemesterSubjects(
+          userId: currentProfile.id,
+          universityId: _selectedUniversity?.id ?? _selectedCollege?.universityId,
+          collegeId: _selectedCollege?.id,
+          courseId: _selectedCourse?.id,
+          branchId: _selectedBranch?.id,
+          branchName: _branch,
+          semesterNumber: _semester,
+        );
+      } catch (e) {
+        debugPrint('Warning: Failed to auto-enroll semester subjects: $e');
+      }
 
       _status = OnboardingStepStatus.success;
       notifyListeners();

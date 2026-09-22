@@ -106,6 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthProvider>();
+    final profileProvider = context.read<ProfileProvider>();
     final success = await auth.registerWithEmail(
       fullName: _nameController.text.trim(),
       email: _emailController.text.trim(),
@@ -116,7 +117,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!success && auth.error != null) {
       setState(() => _errorMessage = auth.error!);
     } else if (success) {
-      context.pushReplacement('/verify-email');
+      final user = auth.currentUser;
+      if (user != null) {
+        await profileProvider.syncProfile(
+          firebaseUid: user.uid,
+          email: user.email ?? _emailController.text.trim(),
+          fullName: _nameController.text.trim(),
+          avatarUrl: user.photoUrl,
+          authProvider: 'password',
+        );
+      }
+      if (!mounted) return;
+      context.go('/onboarding');
     }
   }
 

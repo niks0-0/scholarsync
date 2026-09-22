@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:scholarsync/features/academic_catalog/domain/models/academic_master_data.dart';
 import 'package:scholarsync/features/academic_catalog/domain/models/subject.dart';
 import 'package:scholarsync/features/academic_catalog/domain/repositories/academic_catalog_repository.dart';
 import 'package:scholarsync/features/academic_catalog/presentation/academic_catalog_provider.dart';
+import 'package:scholarsync/features/profile/domain/models/college.dart';
 import 'package:scholarsync/features/profile/domain/models/user_profile.dart';
 
 class MockAcademicCatalogRepository implements AcademicCatalogRepository {
@@ -83,6 +85,54 @@ class MockAcademicCatalogRepository implements AcademicCatalogRepository {
   }) async {
     enrolledIds.remove(subjectId);
   }
+
+  @override
+  Future<List<AcademicState>> getStates() async => const [];
+
+  @override
+  Future<List<University>> getUniversities({String? stateId}) async => const [];
+
+  @override
+  Future<List<College>> getColleges({String? stateId, String? universityId}) async => const [];
+
+  @override
+  Future<List<AcademicStream>> getStreams() async => const [];
+
+  @override
+  Future<List<AcademicCourse>> getCourses({String? streamId}) async => const [];
+
+  @override
+  Future<List<AcademicBranch>> getBranches({String? streamId}) async => const [];
+
+  @override
+  Future<List<AcademicSemester>> getSemesters() async => const [];
+
+  @override
+  Future<void> saveStudentAcademicProfile({
+    required String userId,
+    String? stateId,
+    String? universityId,
+    String? collegeId,
+    String? streamId,
+    String? courseId,
+    String? branchId,
+    String? semesterId,
+    String? rollNumber,
+    String? enrollmentNumber,
+    String? division,
+  }) async {}
+
+  @override
+  Future<List<Subject>> autoEnrollSemesterSubjects({
+    required String userId,
+    String? universityId,
+    String? collegeId,
+    String? courseId,
+    String? branchId,
+    required String branchName,
+    required int semesterNumber,
+  }) async =>
+      const [];
 }
 
 void main() {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/widgets/student_avatar.dart';
 import '../../../../auth/auth_provider.dart';
 import '../../../../auth/presentation/widgets/app_logo.dart';
 import '../../../../auth/presentation/widgets/primary_button.dart';
@@ -33,18 +34,9 @@ class WelcomeStep extends StatelessWidget {
           const SizedBox(height: AppDimensions.spacingXl),
           // User Avatar / Logo Badge
           Container(
-            width: 100,
-            height: 100,
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary,
-                  AppColors.primary.withValues(alpha: 0.7),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primary.withValues(alpha: 0.3),
@@ -53,21 +45,12 @@ class WelcomeStep extends StatelessWidget {
                 ),
               ],
             ),
-            child: CircleAvatar(
-              radius: 48,
-              backgroundColor: Colors.transparent,
-              backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                  ? NetworkImage(avatarUrl)
-                  : null,
-              child: avatarUrl == null || avatarUrl.isEmpty
-                  ? Text(
-                      displayName.isNotEmpty ? displayName[0].toUpperCase() : 'S',
-                      style: textTheme.headlineLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : null,
+            child: StudentAvatar(
+              radius: 46,
+              avatarUrl: avatarUrl,
+              name: displayName,
+              borderWidth: 2,
+              borderColor: AppColors.primary,
             ),
           ),
 

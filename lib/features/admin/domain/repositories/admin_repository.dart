@@ -70,6 +70,9 @@ abstract class AdminRepository {
   /// Update a user's role (e.g. promote to admin/student).
   Future<void> updateUserRole(String userId, UserRole newRole);
 
+  /// Update a student's verification status ('verified', 'rejected', or 'pending_verification').
+  Future<void> updateStudentVerificationStatus(String userId, String status);
+
   /// Suspend or reactivate a student account.
   Future<void> toggleUserSuspension(String userId, bool isSuspended, {String? reason});
 

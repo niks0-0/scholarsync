@@ -346,6 +346,22 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateStudentVerificationStatus(String userId, String status) async {
+    try {
+      await _repository.updateStudentVerificationStatus(userId, status);
+      final index = _students.indexWhere((s) => s.id == userId);
+      if (index != -1) {
+        _students[index] = _students[index].copyWith(verificationStatus: status);
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to update student verification status: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> toggleUserSuspension(String userId, bool isSuspended, {String? reason}) async {
     try {
       await _repository.toggleUserSuspension(userId, isSuspended, reason: reason);

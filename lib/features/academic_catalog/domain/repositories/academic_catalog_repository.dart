@@ -1,3 +1,5 @@
+import '../../../profile/domain/models/college.dart';
+import '../models/academic_master_data.dart';
 import '../models/subject.dart';
 
 /// Centralized repository contract for Academic Catalog and Subject Assignment operations.
@@ -33,4 +35,54 @@ abstract class AcademicCatalogRepository {
     required String firebaseUid,
     required String subjectId,
   });
+
+  // ── Master Academic Directory Operations ───────────────────────────────────
+
+  /// Fetches all registered States and Union Territories.
+  Future<List<AcademicState>> getStates();
+
+  /// Fetches Universities, optionally filtered by [stateId].
+  Future<List<University>> getUniversities({String? stateId});
+
+  /// Fetches Colleges, optionally filtered by [stateId] or [universityId].
+  Future<List<College>> getColleges({String? stateId, String? universityId});
+
+  /// Fetches all major Academic Streams (Engineering, Science, etc.).
+  Future<List<AcademicStream>> getStreams();
+
+  /// Fetches Courses / Degree Programs, optionally filtered by [streamId].
+  Future<List<AcademicCourse>> getCourses({String? streamId});
+
+  /// Fetches Academic Branches, optionally filtered by [streamId].
+  Future<List<AcademicBranch>> getBranches({String? streamId});
+
+  /// Fetches Academic Semesters.
+  Future<List<AcademicSemester>> getSemesters();
+
+  /// Persists student academic profile relations to `student_academic_profile`.
+  Future<void> saveStudentAcademicProfile({
+    required String userId,
+    String? stateId,
+    String? universityId,
+    String? collegeId,
+    String? streamId,
+    String? courseId,
+    String? branchId,
+    String? semesterId,
+    String? rollNumber,
+    String? enrollmentNumber,
+    String? division,
+  });
+
+  /// Auto-enrolls the student in active curriculum subjects matching their academic profile.
+  Future<List<Subject>> autoEnrollSemesterSubjects({
+    required String userId,
+    String? universityId,
+    String? collegeId,
+    String? courseId,
+    String? branchId,
+    required String branchName,
+    required int semesterNumber,
+  });
 }
+

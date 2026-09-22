@@ -6,7 +6,7 @@ import '../widgets/onboarding_header.dart';
 import '../widgets/steps/academic_info_step.dart';
 import '../widgets/steps/college_step.dart';
 import '../widgets/steps/completion_step.dart';
-import '../widgets/steps/preferences_step.dart';
+import '../widgets/steps/legal_verification_step.dart';
 import '../widgets/steps/profile_step.dart';
 import '../widgets/steps/welcome_step.dart';
 
@@ -26,7 +26,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     'College',
     'Academic Info',
     'Profile',
-    'Preferences',
+    'Verification & Legal',
     'Completion',
   ];
 
@@ -90,7 +90,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   CollegeStep(onNext: _nextPage, onPrevious: _previousPage),
                   AcademicInfoStep(onNext: _nextPage, onPrevious: _previousPage),
                   ProfileStep(onNext: _nextPage, onPrevious: _previousPage),
-                  PreferencesStep(onNext: _nextPage, onPrevious: _previousPage),
+                  LegalVerificationStep(onNext: _nextPage, onPrevious: _previousPage),
                   CompletionStep(onPrevious: _previousPage),
                 ],
               ),

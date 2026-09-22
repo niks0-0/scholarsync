@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../profile/presentation/profile_provider.dart';
+import '../../../auth/auth_provider.dart';
 import '../admin_provider.dart';
 
 /// Responsive Application Owner & Master Admin console shell for ScholarSync.
@@ -90,6 +91,16 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     }
   }
 
+  Future<void> _handleLogout(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final profile = context.read<ProfileProvider>();
+    await auth.signOut();
+    profile.clear();
+    if (context.mounted) {
+      context.go('/welcome');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -167,10 +178,21 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                             alignment: Alignment.bottomCenter,
                             child: Padding(
                               padding: const EdgeInsets.only(bottom: 20),
-                              child: IconButton.outlined(
-                                tooltip: 'Switch to Student View',
-                                icon: const Icon(Icons.exit_to_app_rounded),
-                                onPressed: () => context.go('/home'),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton.outlined(
+                                    tooltip: 'Switch to Student Mode',
+                                    icon: const Icon(Icons.school_outlined),
+                                    onPressed: () => context.go('/home'),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  IconButton.outlined(
+                                    tooltip: 'Log Out of Admin',
+                                    icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+                                    onPressed: () => _handleLogout(context),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -286,7 +308,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             actions: [
               TextButton.icon(
-                icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                icon: const Icon(Icons.school_outlined, size: 16),
                 label: const Text('Student View'),
                 style: TextButton.styleFrom(
                   foregroundColor: colorScheme.primary,
@@ -294,7 +316,12 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 ),
                 onPressed: () => context.go('/home'),
               ),
-              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, color: AppColors.error, size: 20),
+                tooltip: 'Log Out',
+                onPressed: () => _handleLogout(context),
+              ),
+              const SizedBox(width: 4),
             ],
           ),
           drawer: Drawer(
@@ -451,11 +478,19 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 ),
                 const Divider(),
                 ListTile(
-                  leading: const Icon(Icons.exit_to_app_rounded, color: AppColors.primary),
-                  title: const Text('Switch to Student View'),
+                  leading: const Icon(Icons.school_outlined, color: AppColors.primary),
+                  title: const Text('Switch to Student Mode'),
                   onTap: () {
                     Navigator.pop(context);
                     context.go('/home');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout_rounded, color: AppColors.error),
+                  title: const Text('Sign Out of Admin', style: TextStyle(color: AppColors.error)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _handleLogout(context);
                   },
                 ),
               ],

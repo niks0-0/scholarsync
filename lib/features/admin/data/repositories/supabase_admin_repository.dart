@@ -303,6 +303,17 @@ class SupabaseAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<void> updateStudentVerificationStatus(String userId, String status) async {
+    try {
+      final client = SupabaseService.instance.client;
+      await client.from('profiles').update({'verification_status': status}).eq('id', userId);
+    } catch (e) {
+      debugPrint('Error updating student verification status: $e');
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> toggleUserSuspension(String userId, bool isSuspended, {String? reason}) async {
     try {
       final client = SupabaseService.instance.client;

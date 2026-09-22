@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/services/theme_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/student_avatar.dart';
 import '../../../auth/auth_provider.dart';
 import '../../../profile/presentation/profile_provider.dart';
 import '../dashboard_provider.dart';
@@ -60,21 +61,13 @@ class GreetingHeaderCard extends StatelessWidget {
               // User Avatar
               Semantics(
                 label: 'User profile avatar',
-                child: CircleAvatar(
+                child: StudentAvatar(
                   radius: 24,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                      ? NetworkImage(avatarUrl)
-                      : null,
-                  child: avatarUrl == null || avatarUrl.isEmpty
-                      ? Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : 'S',
-                          style: textTheme.titleMedium?.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
-                      : null,
+                  avatarUrl: avatarUrl,
+                  name: name,
+                  borderWidth: 1.5,
+                  borderColor: AppColors.primary,
+                  onTap: () => context.push('/profile'),
                 ),
               ),
               const SizedBox(width: AppDimensions.spacingMd),

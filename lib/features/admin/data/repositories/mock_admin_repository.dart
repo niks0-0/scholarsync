@@ -406,6 +406,14 @@ class MockAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<void> updateStudentVerificationStatus(String userId, String status) async {
+    final index = _students.indexWhere((s) => s.id == userId);
+    if (index != -1) {
+      _students[index] = _students[index].copyWith(verificationStatus: status);
+    }
+  }
+
+  @override
   Future<void> toggleUserSuspension(String userId, bool isSuspended, {String? reason}) async {
     final index = _students.indexWhere((s) => s.id == userId);
     if (index != -1) {

@@ -29,6 +29,14 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Directly updates the active in-memory user profile and notifies listeners.
+  void setProfile(UserProfile profile) {
+    _profile = profile;
+    _isLoading = false;
+    _error = null;
+    notifyListeners();
+  }
+
   void _setError(String? message) {
     _error = message;
     notifyListeners();

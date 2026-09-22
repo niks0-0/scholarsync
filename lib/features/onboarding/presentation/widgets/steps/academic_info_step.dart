@@ -62,9 +62,58 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
 
           const SizedBox(height: AppDimensions.spacingXxl),
 
+          // ── Course / Degree Program Selection ─────────────────────────────
+          Text(
+            'Degree / Course Program',
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: AppDimensions.spacingSm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingLg),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+              border: Border.all(color: colorScheme.outline),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                value: onboarding.selectedCourse?.id,
+                hint: Text('Select Degree Program (e.g. B.Tech, MCA, BE)',
+                    style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
+                isExpanded: true,
+                dropdownColor: colorScheme.surfaceContainerHighest,
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('General / Default Program', style: textTheme.bodyLarge),
+                  ),
+                  ...onboarding.courses.map((c) {
+                    return DropdownMenuItem<String?>(
+                      value: c.id,
+                      child: Text(c.name, style: textTheme.bodyLarge),
+                    );
+                  }),
+                ],
+                onChanged: (courseId) {
+                  if (courseId == null) {
+                    onboarding.setSelectedCourse(null);
+                  } else {
+                    final course = onboarding.courses.where((c) => c.id == courseId).firstOrNull;
+                    onboarding.setSelectedCourse(course);
+                  }
+                },
+              ),
+            ),
+          ),
+
+          const SizedBox(height: AppDimensions.spacingXxl),
+
           // ── Branch Selection ──────────────────────────────────────────────
           Text(
-            'Academic Branch / Program',
+            'Academic Branch / Specialization',
             style: textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
               color: colorScheme.onSurface,
@@ -80,17 +129,33 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: onboarding.branch,
+                value: (onboarding.filteredBranches.any((b) => b.name == onboarding.branch) ||
+                        OnboardingProvider.availableBranches.contains(onboarding.branch))
+                    ? onboarding.branch
+                    : (onboarding.filteredBranches.isNotEmpty
+                        ? onboarding.filteredBranches.first.name
+                        : OnboardingProvider.availableBranches.first),
                 isExpanded: true,
                 dropdownColor: colorScheme.surfaceContainerHighest,
-                items: OnboardingProvider.availableBranches.map((b) {
+                items: (onboarding.filteredBranches.isNotEmpty
+                        ? onboarding.filteredBranches.map((b) => b.name).toSet().toList()
+                        : OnboardingProvider.availableBranches)
+                    .map((branchName) {
                   return DropdownMenuItem<String>(
-                    value: b,
-                    child: Text(b, style: textTheme.bodyLarge),
+                    value: branchName,
+                    child: Text(branchName, style: textTheme.bodyLarge),
                   );
                 }).toList(),
                 onChanged: (val) {
-                  if (val != null) onboarding.setBranch(val);
+                  if (val != null) {
+                    final branchModel =
+                        onboarding.branches.where((b) => b.name == val).firstOrNull;
+                    if (branchModel != null) {
+                      onboarding.setSelectedBranch(branchModel);
+                    } else {
+                      onboarding.setBranch(val);
+                    }
+                  }
                 },
               ),
             ),

@@ -21,6 +21,9 @@ class UserProfile {
     this.enrollmentNumber,
     this.isSuspended = false,
     this.suspensionReason,
+    this.verificationStatus = 'pending_verification',
+    this.collegeIdCardUrl,
+    this.legalAcceptedAt,
     this.createdAt,
     this.updatedAt,
   });
@@ -73,6 +76,19 @@ class UserProfile {
   /// Optional reason for administrative suspension.
   final String? suspensionReason;
 
+  /// Verification status: `'pending_verification'`, `'verified'`, or `'rejected'`.
+  final String verificationStatus;
+
+  /// Optional URL of uploaded College Student ID card photo.
+  final String? collegeIdCardUrl;
+
+  /// Timestamp when terms, privacy policy, and self-concern undertaking were accepted.
+  final DateTime? legalAcceptedAt;
+
+  /// Helper indicating if the user has full operational access.
+  /// Administrators are automatically verified.
+  bool get isVerified => verificationStatus == 'verified' || role.isAdmin;
+
   /// Creation timestamp.
   final DateTime? createdAt;
 
@@ -99,6 +115,11 @@ class UserProfile {
       enrollmentNumber: json['enrollment_number'] as String?,
       isSuspended: (json['is_suspended'] as bool?) ?? false,
       suspensionReason: json['suspension_reason'] as String?,
+      verificationStatus: (json['verification_status'] as String?) ?? 'pending_verification',
+      collegeIdCardUrl: json['college_id_card_url'] as String?,
+      legalAcceptedAt: json['legal_accepted_at'] != null
+          ? DateTime.tryParse(json['legal_accepted_at'] as String)
+          : null,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
@@ -126,6 +147,9 @@ class UserProfile {
       'enrollment_number': enrollmentNumber,
       'is_suspended': isSuspended,
       'suspension_reason': suspensionReason,
+      'verification_status': verificationStatus,
+      'college_id_card_url': collegeIdCardUrl,
+      'legal_accepted_at': legalAcceptedAt?.toIso8601String(),
     };
   }
 
@@ -145,6 +169,9 @@ class UserProfile {
     String? enrollmentNumber,
     bool? isSuspended,
     String? suspensionReason,
+    String? verificationStatus,
+    String? collegeIdCardUrl,
+    DateTime? legalAcceptedAt,
   }) {
     return UserProfile(
       id: id,
@@ -163,6 +190,9 @@ class UserProfile {
       enrollmentNumber: enrollmentNumber ?? this.enrollmentNumber,
       isSuspended: isSuspended ?? this.isSuspended,
       suspensionReason: suspensionReason ?? this.suspensionReason,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      collegeIdCardUrl: collegeIdCardUrl ?? this.collegeIdCardUrl,
+      legalAcceptedAt: legalAcceptedAt ?? this.legalAcceptedAt,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -180,5 +210,5 @@ class UserProfile {
 
   @override
   String toString() =>
-      'UserProfile(id: $id, email: $email, fullName: $fullName, role: ${role.name}, branch: $branch, semester: $semester)';
+      'UserProfile(id: $id, email: $email, fullName: $fullName, role: ${role.name}, verified: $isVerified, branch: $branch, semester: $semester)';
 }

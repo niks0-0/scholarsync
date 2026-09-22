@@ -55,10 +55,97 @@ class _CollegeStepState extends State<CollegeStep> {
 
           const SizedBox(height: AppDimensions.spacingLg),
 
+          // ── State & University Cascading Filter Row ──
+          Row(
+            children: [
+              // State Dropdown
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                    border: Border.all(color: colorScheme.outline.withValues(alpha: 0.5)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String?>(
+                      value: onboarding.selectedState?.id,
+                      hint: Text('All States', style: textTheme.bodySmall),
+                      isExpanded: true,
+                      dropdownColor: colorScheme.surfaceContainerHighest,
+                      items: [
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('All States', style: textTheme.bodySmall),
+                        ),
+                        ...onboarding.states.map((s) => DropdownMenuItem<String?>(
+                              value: s.id,
+                              child: Text(s.name,
+                                  style: textTheme.bodySmall, overflow: TextOverflow.ellipsis),
+                            )),
+                      ],
+                      onChanged: (stateId) {
+                        if (stateId == null) {
+                          onboarding.setSelectedState(null);
+                        } else {
+                          final state = onboarding.states.where((s) => s.id == stateId).firstOrNull;
+                          onboarding.setSelectedState(state);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // University Dropdown
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                    border: Border.all(color: colorScheme.outline.withValues(alpha: 0.5)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String?>(
+                      value: onboarding.selectedUniversity?.id,
+                      hint: Text('All Universities', style: textTheme.bodySmall),
+                      isExpanded: true,
+                      dropdownColor: colorScheme.surfaceContainerHighest,
+                      items: [
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('All Universities', style: textTheme.bodySmall),
+                        ),
+                        ...onboarding.filteredUniversities.map((u) => DropdownMenuItem<String?>(
+                              value: u.id,
+                              child: Text(u.name,
+                                  style: textTheme.bodySmall, overflow: TextOverflow.ellipsis),
+                            )),
+                      ],
+                      onChanged: (uniId) {
+                        if (uniId == null) {
+                          onboarding.setSelectedUniversity(null);
+                        } else {
+                          final uni =
+                              onboarding.universities.where((u) => u.id == uniId).firstOrNull;
+                          onboarding.setSelectedUniversity(uni);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppDimensions.spacingMd),
+
           // Search Field
           AppTextField(
             label: 'Search College',
-            hint: 'Search college name or code...',
+            hint: 'Search college name, code, or city...',
             controller: _searchController,
             prefixIcon: Icons.search_rounded,
             onChanged: (query) => onboarding.searchColleges(query),
@@ -146,16 +233,65 @@ class _CollegeStepState extends State<CollegeStep> {
                                           color: isSelected ? AppColors.primary : colorScheme.onSurface,
                                         ),
                                       ),
-                                      if (college.code.isNotEmpty) ...[
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Code: ${college.code}',
-                                          style: textTheme.labelSmall?.copyWith(
-                                            color: colorScheme.onSurfaceVariant,
-                                            fontFamily: 'monospace',
-                                          ),
-                                        ),
-                                      ],
+                                      const SizedBox(height: 4),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: [
+                                          if (college.code.isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: colorScheme.surfaceContainerHighest,
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                college.code,
+                                                style: textTheme.labelSmall?.copyWith(
+                                                  fontFamily: 'monospace',
+                                                  color: colorScheme.onSurfaceVariant,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          if (college.city != null && college.city!.isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.secondary
+                                                    .withValues(alpha: 0.15),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                college.city!,
+                                                style: textTheme.labelSmall?.copyWith(
+                                                  color: AppColors.secondary,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          if (college.category != null &&
+                                              college.category!.isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.accent
+                                                    .withValues(alpha: 0.15),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                college.category!,
+                                                style: textTheme.labelSmall?.copyWith(
+                                                  color: AppColors.accent,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
                                     ],
                                   ),
                                 ),

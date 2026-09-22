@@ -35,7 +35,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
   String _errorMessage = '';
-  int _selectedPortalIndex = 0; // 0 = Student, 1 = Admin
 
   @override
   void dispose() {
@@ -44,23 +43,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _emailFocus.dispose();
     _passwordFocus.dispose();
     super.dispose();
-  }
-
-  void _onPortalChanged(int index) {
-    setState(() {
-      _selectedPortalIndex = index;
-      _errorMessage = '';
-      if (index == 1) {
-        // Admin portal pre-fill helper
-        _emailController.text = 'admin@scholarsync.com';
-        _passwordController.text = 'Admin@123456';
-      } else {
-        if (_emailController.text == 'admin@scholarsync.com') {
-          _emailController.clear();
-          _passwordController.clear();
-        }
-      }
-    });
   }
 
   void _openPersonaSheet() {
@@ -74,7 +56,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             _emailController.text = email;
             _passwordController.text = password;
             _errorMessage = '';
-            _selectedPortalIndex = email.contains('admin') ? 1 : 0;
           });
         },
       ),
@@ -110,10 +91,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         await context.read<NotificationProvider>().syncDeviceToken(user.uid);
       }
       if (!mounted) return;
-      if (profileProvider.profile?.role.isAdmin ?? false) {
+      final profile = profileProvider.profile;
+      if (profile?.role.isAdmin ?? false) {
         context.go('/admin');
-      } else {
+      } else if (profile?.onboardingCompleted ?? false) {
         context.go('/home');
+      } else {
+        context.go('/onboarding');
       }
     }
   }
@@ -161,13 +145,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final auth = context.watch<AuthProvider>();
-    final isAdmin = _selectedPortalIndex == 1;
 
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
       body: AuthMeshBackground(
-        primaryGlowColor: isAdmin ? const Color(0xFF818CF8) : const Color(0xFF38BDF8),
-        secondaryGlowColor: isAdmin ? const Color(0xFFC084FC) : const Color(0xFF22D3EE),
+        primaryGlowColor: const Color(0xFF38BDF8),
+        secondaryGlowColor: const Color(0xFF818CF8),
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
@@ -195,7 +178,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 tooltip: 'Back',
                               )
                             else
-                              const SizedBox(width: 40),
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 20),
+                                onPressed: () => context.go('/welcome'),
+                                tooltip: 'Back to Welcome',
+                              ),
 
                             InkWell(
                               onTap: _openPersonaSheet,
@@ -213,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     Icon(Icons.flash_on_rounded, size: 14, color: AppColors.primary),
                                     SizedBox(width: 4),
                                     Text(
-                                      '⚡ Quick Persona',
+                                      '⚡ Quick Demo',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
@@ -227,28 +214,26 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           ],
                         ),
 
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
 
                         // ── App Brand Header ─────────────────────────────────────
                         Center(
                           child: Column(
                             children: [
                               const AppLogo(size: LogoSize.medium),
-                              const SizedBox(height: 12),
-                              Text(
-                                isAdmin ? 'Admin Management Console' : AppStrings.loginTitle,
-                                style: const TextStyle(
-                                  fontSize: 22,
+                              const SizedBox(height: 14),
+                              const Text(
+                                AppStrings.loginTitle,
+                                style: TextStyle(
+                                  fontSize: 24,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                   letterSpacing: -0.5,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 6),
                               Text(
-                                isAdmin
-                                    ? 'Authorize with your faculty or administrative key'
-                                    : AppStrings.loginSubtitle,
+                                AppStrings.loginSubtitle,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: Colors.white.withValues(alpha: 0.65),
@@ -259,100 +244,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           ),
                         ),
 
-                        const SizedBox(height: 20),
-
-                        // ── Portal Segmented Switcher ────────────────────────────
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF141418),
-                            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-                            border: Border.all(color: const Color(0xFF27272A)),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () => _onPortalChanged(0),
-                                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 250),
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: !isAdmin ? const Color(0xFF27272A) : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                                      border: !isAdmin
-                                          ? Border.all(color: AppColors.primary.withValues(alpha: 0.6))
-                                          : null,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.school_rounded,
-                                          size: 16,
-                                          color: !isAdmin ? AppColors.primary : Colors.white60,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Student Portal',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: !isAdmin ? FontWeight.bold : FontWeight.w500,
-                                            color: !isAdmin ? Colors.white : Colors.white60,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () => _onPortalChanged(1),
-                                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 250),
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: isAdmin ? const Color(0xFF27272A) : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                                      border: isAdmin
-                                          ? Border.all(color: const Color(0xFF818CF8).withValues(alpha: 0.8))
-                                          : null,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.shield_rounded,
-                                          size: 16,
-                                          color: isAdmin ? const Color(0xFF818CF8) : Colors.white60,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Admin Console',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: isAdmin ? FontWeight.bold : FontWeight.w500,
-                                            color: isAdmin ? Colors.white : Colors.white60,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
 
                         // ── Main Obsidian Glass Form Card ────────────────────────
                         AuthGlassCard(
-                          padding: const EdgeInsets.all(20),
-                          hasActiveGlow: isAdmin,
+                          padding: const EdgeInsets.all(22),
+                          hasActiveGlow: false,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -366,15 +263,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                               // ── Email Input ──────────────────────────────────
                               AppTextField(
-                                label: isAdmin ? 'Administrative Email' : AppStrings.fieldEmail,
-                                hint: isAdmin ? 'admin@scholarsync.com' : AppStrings.fieldEmailHint,
+                                label: AppStrings.fieldEmail,
+                                hint: AppStrings.fieldEmailHint,
                                 controller: _emailController,
                                 focusNode: _emailFocus,
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
                                 validator: AppValidators.email,
                                 autofillHints: const [AutofillHints.email],
-                                prefixIcon: isAdmin ? Icons.admin_panel_settings_outlined : Icons.email_outlined,
+                                prefixIcon: Icons.email_outlined,
                                 onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_passwordFocus),
                               ),
 
@@ -406,10 +303,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                               // ── Submit Button ────────────────────────────────
                               LoadingButton(
-                                label: isAdmin ? 'Enter Admin Console' : AppStrings.loginButton,
+                                label: AppStrings.loginButton,
                                 onPressed: _submit,
                                 isLoading: auth.isLoading,
-                                icon: isAdmin ? Icons.shield_rounded : Icons.login_rounded,
+                                icon: Icons.login_rounded,
                               ),
                             ],
                           ),

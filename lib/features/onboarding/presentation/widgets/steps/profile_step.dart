@@ -1,11 +1,12 @@
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/widgets/student_avatar.dart';
 import '../../../../auth/presentation/widgets/app_text_field.dart';
 import '../../../../auth/presentation/widgets/primary_button.dart';
+import '../../../../profile/presentation/widgets/avatar_selection_sheet.dart';
 import '../../onboarding_provider.dart';
 
 class ProfileStep extends StatefulWidget {
@@ -24,16 +25,6 @@ class ProfileStep extends StatefulWidget {
 
 class _ProfileStepState extends State<ProfileStep> {
   late TextEditingController _nameController;
-
-  // Sample avatar presets for quick selection if live file picker isn't available
-  static final Map<String, Uint8List> _avatarPresets = {
-    'Student Avatar 1': base64Decode(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-    ),
-    'Student Avatar 2': base64Decode(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-    ),
-  };
 
   @override
   void initState() {
@@ -76,62 +67,65 @@ class _ProfileStepState extends State<ProfileStep> {
 
           const SizedBox(height: AppDimensions.spacingXxl),
 
-          // Avatar Image Preview & Upload Container
+          // Avatar Image Preview & Options Selector
           Center(
             child: Column(
               children: [
-                Stack(
-                  children: [
-                    Container(
-                      width: 110,
-                      height: 110,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primary, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: colorScheme.surfaceContainerHighest,
-                        backgroundImage: onboarding.avatarUrl != null && onboarding.avatarUrl!.isNotEmpty
-                            ? NetworkImage(onboarding.avatarUrl!)
-                            : null,
-                        child: onboarding.avatarUrl == null || onboarding.avatarUrl!.isEmpty
-                            ? Icon(
-                                Icons.person_rounded,
-                                size: 55,
-                                color: colorScheme.onSurfaceVariant,
-                              )
-                            : null,
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
+                GestureDetector(
+                  onTap: () {
+                    AvatarSelectionSheet.show(
+                      context: context,
+                      currentAvatarUrl: onboarding.avatarUrl,
+                      currentBytes: onboarding.avatarBytesToUpload,
+                      studentName: onboarding.fullName.isNotEmpty ? onboarding.fullName : 'Student',
+                      onSelectPreset: (preset) => onboarding.setAvatarUrl(preset),
+                      onSelectBytes: (bytes) => onboarding.setAvatarBytes(bytes),
+                    );
+                  },
+                  child: Stack(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.primary, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.camera_alt_rounded,
-                          color: Colors.white,
-                          size: 18,
+                        child: StudentAvatar(
+                          radius: 48,
+                          avatarUrl: onboarding.avatarUrl,
+                          imageBytes: onboarding.avatarBytesToUpload,
+                          name: onboarding.fullName.isNotEmpty ? onboarding.fullName : 'Student',
                         ),
                       ),
-                    ),
-                  ],
+                      Positioned(
+                        bottom: 2,
+                        right: 2,
+                        child: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.edit_rounded,
+                            color: Colors.black,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: AppDimensions.spacingMd),
                 Text(
-                  'Profile Avatar',
+                  'Choose Profile Avatar',
                   style: textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onSurface,
@@ -139,29 +133,60 @@ class _ProfileStepState extends State<ProfileStep> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Supports JPG, PNG, WEBP, GIF (Max 5MB)',
+                  'Select male, female, blank initial, or custom photo',
                   style: textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: AppDimensions.spacingMd),
-                Wrap(
-                  spacing: AppDimensions.spacingSm,
-                  children: _avatarPresets.entries.map((entry) {
-                    return ActionChip(
-                      avatar: const Icon(Icons.image_outlined, size: 16),
-                      label: Text(entry.key),
-                      onPressed: () {
-                        onboarding.setAvatarBytes(entry.value);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${entry.key} selected for upload!'),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
+                const SizedBox(height: AppDimensions.spacingLg),
+
+                // 3 Avatar Option Tiles
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Male Avatar Option
+                    _buildAvatarChip(
+                      context,
+                      title: 'Male',
+                      avatarUrl: AvatarPresets.male,
+                      isSelected: onboarding.avatarBytesToUpload == null &&
+                          onboarding.avatarUrl == AvatarPresets.male,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        onboarding.setAvatarUrl(AvatarPresets.male);
                       },
-                    );
-                  }).toList(),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Female Avatar Option
+                    _buildAvatarChip(
+                      context,
+                      title: 'Female',
+                      avatarUrl: AvatarPresets.female,
+                      isSelected: onboarding.avatarBytesToUpload == null &&
+                          onboarding.avatarUrl == AvatarPresets.female,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        onboarding.setAvatarUrl(AvatarPresets.female);
+                      },
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Blank / Initials Option
+                    _buildAvatarChip(
+                      context,
+                      title: 'Blank',
+                      avatarUrl: AvatarPresets.blank,
+                      name: onboarding.fullName,
+                      isSelected: onboarding.avatarBytesToUpload == null &&
+                          (onboarding.avatarUrl == null ||
+                              onboarding.avatarUrl!.isEmpty),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        onboarding.setAvatarUrl(AvatarPresets.blank);
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -238,6 +263,72 @@ class _ProfileStepState extends State<ProfileStep> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAvatarChip(
+    BuildContext context, {
+    required String title,
+    required String avatarUrl,
+    String? name,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.18)
+              : (isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary
+                : (isDark ? Colors.white10 : Colors.black12),
+            width: isSelected ? 2.0 : 1.0,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            StudentAvatar(
+              avatarUrl: avatarUrl,
+              name: name,
+              radius: 24,
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isSelected) ...[
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    size: 13,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 3),
+                ],
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color: isSelected
+                        ? AppColors.primary
+                        : (isDark ? Colors.white : AppColors.textPrimary),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

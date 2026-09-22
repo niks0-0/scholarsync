@@ -314,6 +314,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final isLocked = widget.room.isLocked;
     final currentUserId = profile?.id ?? authUser?.uid ?? Supabase.instance.client.auth.currentUser?.id;
     final isStudentSuspended = profile?.isSuspended ?? false;
+    final isVerified = profile?.isVerified ?? true;
 
     return Scaffold(
       backgroundColor: const Color(0xFF090A0E),
@@ -411,6 +412,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               ),
             ),
 
+          if (!isVerified)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              color: const Color(0xFFD97706).withValues(alpha: 0.15),
+              child: const Row(
+                children: [
+                  Icon(Icons.shield_outlined, color: Color(0xFFF59E0B), size: 16),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Read-Only Preview: Community chat unlocks once Admin verifies your Student ID.',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Message Stream
           Expanded(
             child: admin.isLoading && admin.activeRoomMessages.isEmpty
@@ -493,12 +512,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    enabled: !isLocked && !isStudentSuspended,
+                    enabled: !isLocked && !isStudentSuspended && isVerified,
                     style: const TextStyle(color: Colors.white, fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: isLocked
-                          ? 'Channel is in read-only mode'
-                          : (isStudentSuspended ? 'Account is restricted' : 'Type a message...'),
+                      hintText: !isVerified
+                          ? 'Read-Only Preview • ID Verification Pending'
+                          : (isLocked
+                              ? 'Channel is in read-only mode'
+                              : (isStudentSuspended ? 'Account is restricted' : 'Type a message...')),
                       hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
                       filled: true,
                       fillColor: const Color(0xFF181A22),
@@ -514,19 +535,21 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
-                  icon: _isSending
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                        )
-                      : const Icon(Icons.send_rounded, size: 18, color: Colors.black),
+                  icon: !isVerified
+                      ? const Icon(Icons.lock_outline_rounded, size: 18, color: Colors.white38)
+                      : (_isSending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                            )
+                          : const Icon(Icons.send_rounded, size: 18, color: Colors.black)),
                   style: IconButton.styleFrom(
-                    backgroundColor: (!isLocked && !isStudentSuspended)
+                    backgroundColor: (!isLocked && !isStudentSuspended && isVerified)
                         ? AppColors.primary
                         : Colors.white.withValues(alpha: 0.2),
                   ),
-                  onPressed: (!isLocked && !isStudentSuspended) ? _sendMessage : null,
+                  onPressed: (!isLocked && !isStudentSuspended && isVerified) ? _sendMessage : null,
                 ),
               ],
             ),

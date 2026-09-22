@@ -31,6 +31,8 @@ import 'features/calendar/presentation/calendar_provider.dart';
 import 'features/attendance/data/repositories/local_attendance_repository.dart';
 import 'features/attendance/domain/repositories/attendance_repository.dart';
 import 'features/attendance/presentation/attendance_provider.dart';
+import 'features/leaderboard/data/repositories/leaderboard_repository.dart';
+import 'features/leaderboard/presentation/leaderboard_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -102,7 +104,9 @@ class ScholarSyncApp extends StatelessWidget {
           create: (_) => NotificationProvider(),
         ),
         ChangeNotifierProvider<OnboardingProvider>(
-          create: (_) => OnboardingProvider(),
+          create: (ctx) => OnboardingProvider(
+            academicCatalogRepository: ctx.read<AcademicCatalogRepository>(),
+          ),
         ),
         ChangeNotifierProvider<DashboardProvider>(
           create: (_) => DashboardProvider(),
@@ -124,6 +128,11 @@ class ScholarSyncApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<AdminProvider>(
           create: (_) => AdminProvider(),
+        ),
+        ChangeNotifierProvider<LeaderboardProvider>(
+          create: (_) => LeaderboardProvider(
+            repository: SupabaseLeaderboardRepository(),
+          ),
         ),
       ],
       child: const _AppView(),

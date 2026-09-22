@@ -144,7 +144,8 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      await _repository.signInWithEmail(email: email, password: password);
+      final user = await _repository.signInWithEmail(email: email, password: password);
+      _currentUser = user;
       _isLoading = false;
       _state = ApplicationAuthState.authenticated;
       notifyListeners();

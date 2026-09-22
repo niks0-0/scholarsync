@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -10,10 +9,13 @@ import '../../../auth/presentation/widgets/app_text_field.dart';
 import '../../../auth/presentation/widgets/primary_button.dart';
 import '../../../onboarding/presentation/onboarding_provider.dart';
 import '../../data/repositories/supabase_college_repository.dart';
+import '../../../../core/widgets/student_avatar.dart';
+import '../widgets/avatar_selection_sheet.dart';
 import '../../domain/models/college.dart';
 import '../../domain/models/user_profile.dart';
 import '../../domain/models/user_role.dart';
 import '../../domain/repositories/college_repository.dart';
+import '../../../leaderboard/presentation/leaderboard_provider.dart';
 import '../profile_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -41,6 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late String _academicYear;
 
   Uint8List? _newAvatarBytes;
+  String? _selectedAvatarUrl;
   bool _isSaving = false;
   String? _errorMessage;
 
@@ -65,6 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final user = context.read<AuthProvider>().currentUser;
       if (user != null) {
         _nameController.text = user.displayNameOrEmail;
+        _selectedAvatarUrl = user.photoUrl;
       }
     }
 
@@ -80,6 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _semester = profile.semester ?? 1;
     _division = profile.division ?? 'A';
     _academicYear = profile.academicYear ?? OnboardingProvider.availableAcademicYears.first;
+    _selectedAvatarUrl = profile.avatarUrl;
     _initializedFromProfile = true;
   }
 
@@ -111,28 +116,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _rollController.dispose();
     _enrollmentController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickAvatar() async {
-    try {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 85,
-      );
-      if (picked != null) {
-        final bytes = await picked.readAsBytes();
-        if (!mounted) return;
-        setState(() => _newAvatarBytes = bytes);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to pick avatar image: $e')),
-      );
-    }
   }
 
   Future<void> _toggleAdminRole() async {
@@ -182,8 +165,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      // 1. Upload avatar if selected
-      String? updatedAvatarUrl = currentProfile.avatarUrl;
+      // 1. Determine updated avatar URL
+      String? updatedAvatarUrl = _selectedAvatarUrl;
       if (_newAvatarBytes != null) {
         final path = await profileProvider.uploadAvatar(
           firebaseUid: currentProfile.id,
@@ -256,7 +239,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _populateFields(profile);
     }
 
-    final avatarUrl = profile?.avatarUrl ?? auth.currentUser?.photoUrl;
     final email = profile?.email ?? auth.currentUser?.email ?? 'N/A';
     final uid = profile?.id ?? auth.currentUser?.uid ?? 'N/A';
     final provider = profile?.authProvider ?? 'google.com';
@@ -273,7 +255,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             tooltip: 'Sign Out',
             onPressed: () async {
               final authProvider = context.read<AuthProvider>();
+              final profileProvider = context.read<ProfileProvider>();
               await authProvider.signOut();
+              profileProvider.clear();
               if (context.mounted) context.go('/welcome');
             },
           ),
@@ -352,58 +336,369 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
 
-                // Avatar Header
+                // Avatar Header & Options Selector
                 Center(
                   child: Column(
                     children: [
                       Semantics(
                         label: 'Change avatar picture',
-                        child: Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 46,
-                              backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                              backgroundImage: _newAvatarBytes != null
-                                  ? MemoryImage(_newAvatarBytes!)
-                                  : (avatarUrl != null && avatarUrl.isNotEmpty
-                                      ? NetworkImage(avatarUrl)
-                                      : null) as ImageProvider?,
-                              child: _newAvatarBytes == null &&
-                                      (avatarUrl == null || avatarUrl.isEmpty)
-                                  ? Icon(Icons.person_rounded, size: 46, color: AppColors.primary)
-                                  : null,
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: InkWell(
-                                onTap: _pickAvatar,
-                                borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                        child: GestureDetector(
+                          onTap: () {
+                            AvatarSelectionSheet.show(
+                              context: context,
+                              currentAvatarUrl: _selectedAvatarUrl,
+                              currentBytes: _newAvatarBytes,
+                              studentName: _nameController.text.isNotEmpty
+                                  ? _nameController.text
+                                  : (profile?.fullName ?? 'Student'),
+                              onSelectPreset: (preset) {
+                                setState(() {
+                                  _selectedAvatarUrl = preset;
+                                  _newAvatarBytes = null;
+                                });
+                              },
+                              onSelectBytes: (bytes) {
+                                setState(() {
+                                  _newAvatarBytes = bytes;
+                                });
+                              },
+                            );
+                          },
+                          child: Stack(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.primary,
+                                    width: 3,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.25),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: StudentAvatar(
+                                  radius: 46,
+                                  avatarUrl: _selectedAvatarUrl,
+                                  imageBytes: _newAvatarBytes,
+                                  name: _nameController.text.isNotEmpty
+                                      ? _nameController.text
+                                      : (profile?.fullName ?? 'Student'),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 2,
+                                right: 2,
                                 child: Container(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: const EdgeInsets.all(7),
                                   decoration: const BoxDecoration(
                                     color: AppColors.primary,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.camera_alt_rounded,
-                                      size: 16, color: Colors.white),
+                                  child: const Icon(
+                                    Icons.edit_rounded,
+                                    size: 15,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: AppDimensions.spacingSm),
-                      TextButton.icon(
-                        onPressed: _pickAvatar,
-                        icon: const Icon(Icons.photo_library_outlined, size: 16),
-                        label: const Text('Change Photo'),
+                      Text(
+                        'Profile Avatar',
+                        style: textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Tap to change avatar preset or upload custom photo',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                      const SizedBox(height: AppDimensions.spacingMd),
+                      // 3 Quick Presets Selector
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildProfileAvatarChip(
+                            title: 'Male',
+                            avatarUrl: AvatarPresets.male,
+                            isSelected: _newAvatarBytes == null &&
+                                _selectedAvatarUrl == AvatarPresets.male,
+                            onTap: () {
+                              setState(() {
+                                _selectedAvatarUrl = AvatarPresets.male;
+                                _newAvatarBytes = null;
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 10),
+                          _buildProfileAvatarChip(
+                            title: 'Female',
+                            avatarUrl: AvatarPresets.female,
+                            isSelected: _newAvatarBytes == null &&
+                                _selectedAvatarUrl == AvatarPresets.female,
+                            onTap: () {
+                              setState(() {
+                                _selectedAvatarUrl = AvatarPresets.female;
+                                _newAvatarBytes = null;
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 10),
+                          _buildProfileAvatarChip(
+                            title: 'Blank',
+                            avatarUrl: AvatarPresets.blank,
+                            name: _nameController.text,
+                            isSelected: _newAvatarBytes == null &&
+                                (_selectedAvatarUrl == null ||
+                                    _selectedAvatarUrl!.isEmpty),
+                            onTap: () {
+                              setState(() {
+                                _selectedAvatarUrl = AvatarPresets.blank;
+                                _newAvatarBytes = null;
+                              });
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
 
                 const SizedBox(height: AppDimensions.spacingLg),
+
+                // ── Gamification & Leaderboard Badge Showcase ───────────────
+                Consumer<LeaderboardProvider>(
+                  builder: (context, lb, _) {
+                    final myEntry = lb.currentUserEntry;
+                    final badges = lb.userBadges;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: AppDimensions.spacingLg),
+                      padding: const EdgeInsets.all(AppDimensions.spacingMd),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.15),
+                            const Color(0xFFF59E0B).withValues(alpha: 0.08),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.emoji_events_rounded,
+                                    color: Color(0xFFF59E0B),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Scholar Standing & Badges',
+                                    style: textTheme.labelLarge?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              TextButton(
+                                onPressed: () => context.push('/leaderboard'),
+                                style: TextButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                ),
+                                child: const Text(
+                                  'View Board',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.surface.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'GLOBAL RANK',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '#${myEntry?.rank ?? 4}',
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w900,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.surface.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'TOTAL POINTS',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${myEntry?.score ?? 1850}',
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFFF59E0B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.surface.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'ACTIVE STREAK',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${myEntry?.streakDays ?? 14}d 🔥',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFFF97316),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (badges.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: badges.map((b) {
+                                  return Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.surface,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: AppColors.primary.withValues(alpha: 0.2),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.military_tech_rounded,
+                                          size: 14,
+                                          color: Color(0xFFF59E0B),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          b.title,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                ),
 
                 // ── Read-Only Identity Card ──────────────────────────────────
                 Container(
@@ -668,6 +963,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileAvatarChip({
+    required String title,
+    required String avatarUrl,
+    String? name,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.18)
+              : (isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary
+                : (isDark ? Colors.white10 : Colors.black12),
+            width: isSelected ? 2.0 : 1.0,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            StudentAvatar(
+              avatarUrl: avatarUrl,
+              name: name,
+              radius: 22,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isSelected) ...[
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    size: 12,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 3),
+                ],
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color: isSelected
+                        ? AppColors.primary
+                        : (isDark ? Colors.white : AppColors.textPrimary),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

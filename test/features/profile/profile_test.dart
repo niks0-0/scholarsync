@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scholarsync/features/profile/domain/models/user_profile.dart';
+import 'package:scholarsync/features/profile/domain/models/user_role.dart';
 import 'package:scholarsync/features/profile/domain/repositories/profile_repository.dart';
 import 'package:scholarsync/features/profile/presentation/profile_provider.dart';
 import 'package:scholarsync/features/storage/domain/repositories/storage_repository.dart';
@@ -147,6 +148,35 @@ void main() {
       expect(updated.authProvider, equals('google.com'));
       expect(updated.fullName, equals('Updated Name'));
       expect(updated.branch, equals('Information Technology'));
+    });
+
+    test('UserProfile verificationStatus and isVerified helper work correctly', () {
+      const studentPending = UserProfile(
+        id: 's_1',
+        email: 'student@example.com',
+        fullName: 'Student One',
+        verificationStatus: 'pending_verification',
+      );
+      expect(studentPending.isVerified, isFalse);
+
+      final studentVerified = studentPending.copyWith(
+        verificationStatus: 'verified',
+        collegeIdCardUrl: 'https://example.com/id.jpg',
+        legalAcceptedAt: DateTime(2026, 9, 21),
+      );
+      expect(studentVerified.isVerified, isTrue);
+      expect(studentVerified.collegeIdCardUrl, equals('https://example.com/id.jpg'));
+      expect(studentVerified.legalAcceptedAt, isNotNull);
+
+      const adminProfile = UserProfile(
+        id: 'a_1',
+        email: 'admin@example.com',
+        fullName: 'Admin User',
+        role: UserRole.admin,
+        verificationStatus: 'pending_verification',
+      );
+      // Admin is automatically considered verified
+      expect(adminProfile.isVerified, isTrue);
     });
   });
 

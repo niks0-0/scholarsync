@@ -66,45 +66,31 @@ class QuickPersonaSheet extends StatelessWidget {
           ),
           const Divider(color: Color(0xFF27272A), height: 24),
 
-          // Persona 1: App Owner Master Admin
+          // Persona 1: Official Main Admin
           _buildPersonaTile(
             context,
             icon: Icons.shield_rounded,
-            iconColor: AppColors.primary,
-            title: 'Master App Owner (Full Access)',
+            iconColor: const Color(0xFF818CF8),
+            title: 'Main Admin (Official)',
             email: 'admin@scholarsync.com',
-            password: 'Admin@123456',
-            roleBadge: 'SUPER ADMIN',
-            badgeColor: AppColors.primary,
-            subtitle: 'Access to Master Console, Curriculum, Safe-Lock, and Audit Trails',
+            password: 'adminss123',
+            roleBadge: 'MAIN ADMIN',
+            badgeColor: const Color(0xFF818CF8),
+            subtitle: 'Master Console, Student Verification Queue, Curriculum, and Logs',
           ),
           const SizedBox(height: 10),
 
-          // Persona 2: CSE Student (Nilay)
+          // Persona 2: Single Demo Student
           _buildPersonaTile(
             context,
             icon: Icons.school_rounded,
             iconColor: const Color(0xFF38BDF8),
-            title: 'Computer Science Student (Nilay)',
-            email: 'nilay@scholarsync.com',
-            password: 'Password@123',
-            roleBadge: 'CSE SEM 4',
+            title: 'Demo Student (Single Account)',
+            email: 'student@scholarsync.com',
+            password: 'studentss123',
+            roleBadge: 'DEMO STUDENT',
             badgeColor: const Color(0xFF0284C7),
-            subtitle: 'Enrolled in DAA, DBMS, OS & Campus Chat Lounges',
-          ),
-          const SizedBox(height: 10),
-
-          // Persona 3: IT Student (Alex)
-          _buildPersonaTile(
-            context,
-            icon: Icons.code_rounded,
-            iconColor: AppColors.secondary,
-            title: 'Information Technology Student (Alex)',
-            email: 'alex@scholarsync.com',
-            password: 'Password@123',
-            roleBadge: 'IT SEM 2',
-            badgeColor: AppColors.secondary,
-            subtitle: 'Enrolled in Data Structures, Web Dev & Technical Club',
+            subtitle: 'Pre-configured student (CSE, Sem 4, Div A, Roll #26)',
           ),
         ],
       ),

@@ -7,6 +7,7 @@ import '../attendance_provider.dart';
 import '../widgets/add_subject_dialog.dart';
 import '../widgets/attendance_summary_header.dart';
 import '../widgets/bunk_calculator_sheet.dart';
+import '../widgets/smart_insights_sheet.dart';
 import '../widgets/subject_attendance_card.dart';
 
 class AttendanceScreen extends StatefulWidget {
@@ -37,6 +38,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => BunkCalculatorSheet(subjects: attendance.subjects),
+    );
+  }
+
+  void _openSmartInsights() {
+    final attendance = context.read<AttendanceProvider>();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SmartInsightsSheet(subjects: attendance.subjects),
     );
   }
 
@@ -76,6 +87,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       appBar: AppBar(
         title: const Text('Attendance Tracker'),
         actions: [
+          IconButton(
+            onPressed: _openSmartInsights,
+            icon: const Icon(Icons.bolt_rounded, color: AppColors.primary),
+            tooltip: 'Smart Insights Engine',
+          ),
           IconButton(
             onPressed: _openCalculator,
             icon: const Icon(Icons.calculate_outlined),
