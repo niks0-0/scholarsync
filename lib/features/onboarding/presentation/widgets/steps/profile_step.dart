@@ -8,6 +8,7 @@ import '../../../../auth/presentation/widgets/app_text_field.dart';
 import '../../../../auth/presentation/widgets/primary_button.dart';
 import '../../../../profile/presentation/widgets/avatar_selection_sheet.dart';
 import '../../onboarding_provider.dart';
+import '../onboarding_classification_badge.dart';
 
 class ProfileStep extends StatefulWidget {
   const ProfileStep({
@@ -25,17 +26,20 @@ class ProfileStep extends StatefulWidget {
 
 class _ProfileStepState extends State<ProfileStep> {
   late TextEditingController _nameController;
+  late TextEditingController _bioController;
 
   @override
   void initState() {
     super.initState();
     final onboarding = context.read<OnboardingProvider>();
     _nameController = TextEditingController(text: onboarding.fullName);
+    _bioController = TextEditingController(text: onboarding.bio);
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -50,16 +54,22 @@ class _ProfileStepState extends State<ProfileStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Personal Profile & Avatar',
-            style: textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Personal Profile & Interests',
+                style: textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.recommended),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingXs),
           Text(
-            'Customize your student display name and upload a profile avatar.',
+            'Customize your display avatar, student bio, and technical learning interests.',
             style: textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -124,19 +134,19 @@ class _ProfileStepState extends State<ProfileStep> {
                   ),
                 ),
                 const SizedBox(height: AppDimensions.spacingMd),
-                Text(
-                  'Choose Profile Avatar',
-                  style: textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Select male, female, blank initial, or custom photo',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Choose Profile Avatar',
+                      style: textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const OnboardingClassificationBadge(level: ClassificationLevel.recommended),
+                  ],
                 ),
                 const SizedBox(height: AppDimensions.spacingLg),
 
@@ -144,7 +154,6 @@ class _ProfileStepState extends State<ProfileStep> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Male Avatar Option
                     _buildAvatarChip(
                       context,
                       title: 'Male',
@@ -157,8 +166,6 @@ class _ProfileStepState extends State<ProfileStep> {
                       },
                     ),
                     const SizedBox(width: 12),
-
-                    // Female Avatar Option
                     _buildAvatarChip(
                       context,
                       title: 'Female',
@@ -171,8 +178,6 @@ class _ProfileStepState extends State<ProfileStep> {
                       },
                     ),
                     const SizedBox(width: 12),
-
-                    // Blank / Initials Option
                     _buildAvatarChip(
                       context,
                       title: 'Blank',
@@ -195,12 +200,18 @@ class _ProfileStepState extends State<ProfileStep> {
           const SizedBox(height: AppDimensions.spacingXxl),
 
           // Full Name Input
-          Text(
-            'Full Display Name',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Full Display Name',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.required),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingSm),
           AppTextField(
@@ -209,6 +220,70 @@ class _ProfileStepState extends State<ProfileStep> {
             controller: _nameController,
             prefixIcon: Icons.person_outline_rounded,
             onChanged: (val) => onboarding.setFullName(val),
+          ),
+
+          const SizedBox(height: AppDimensions.spacingXxl),
+
+          // Student Bio / Tagline Input
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Student Bio / Tagline',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.optional),
+            ],
+          ),
+          const SizedBox(height: AppDimensions.spacingSm),
+          AppTextField(
+            label: 'Short Bio',
+            hint: 'e.g. Passionate about AI, Flutter & Mobile Systems',
+            controller: _bioController,
+            prefixIcon: Icons.edit_note_rounded,
+            onChanged: (val) => onboarding.setBio(val),
+          ),
+
+          const SizedBox(height: AppDimensions.spacingXxl),
+
+          // Student Academic Interests Chips
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Learning Interests & Specializations',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.recommended),
+            ],
+          ),
+          const SizedBox(height: AppDimensions.spacingSm),
+          Wrap(
+            spacing: AppDimensions.spacingSm,
+            runSpacing: AppDimensions.spacingSm,
+            children: OnboardingProvider.availableInterests.map((interest) {
+              final isSelected = onboarding.selectedInterests.contains(interest);
+              return FilterChip(
+                label: Text(interest),
+                selected: isSelected,
+                selectedColor: AppColors.primary.withValues(alpha: 0.25),
+                checkmarkColor: AppColors.primary,
+                side: BorderSide(
+                  color: isSelected ? AppColors.primary : colorScheme.outline.withValues(alpha: 0.4),
+                ),
+                labelStyle: TextStyle(
+                  color: isSelected ? AppColors.primary : colorScheme.onSurface,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+                onSelected: (_) => onboarding.toggleInterest(interest),
+              );
+            }).toList(),
           ),
 
           if (onboarding.error != null) ...[

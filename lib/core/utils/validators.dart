@@ -1,6 +1,6 @@
 /// Validates form fields for ScholarSync.
 abstract final class AppValidators {
-  // ── Email ─────────────────────────────────────────────────────────────────
+  // ── Email / Username ──────────────────────────────────────────────────────
   static String? email(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Please enter your email';
@@ -8,6 +8,16 @@ abstract final class AppValidators {
     final emailRegex = RegExp(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$');
     if (!emailRegex.hasMatch(value.trim())) {
       return 'Please enter a valid email';
+    }
+    return null;
+  }
+
+  static String? emailOrUsername(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your email or username';
+    }
+    if (value.trim().length < 3) {
+      return 'Email or username must be at least 3 characters';
     }
     return null;
   }

@@ -7,10 +7,11 @@ import '../widgets/steps/academic_info_step.dart';
 import '../widgets/steps/college_step.dart';
 import '../widgets/steps/completion_step.dart';
 import '../widgets/steps/legal_verification_step.dart';
+import '../widgets/steps/preferences_step.dart';
 import '../widgets/steps/profile_step.dart';
 import '../widgets/steps/welcome_step.dart';
 
-/// Master multi-step student onboarding screen.
+/// Production-grade multi-step student onboarding container for ScholarSync.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -23,11 +24,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   static const List<String> _stepTitles = [
     'Welcome',
-    'College',
-    'Academic Info',
-    'Profile',
+    'Institution',
+    'Curriculum',
+    'Profile & Interests',
+    'Preferences',
     'Verification & Legal',
-    'Completion',
+    'Completion & Review',
   ];
 
   @override
@@ -46,17 +48,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _nextPage() {
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    final current = context.read<OnboardingProvider>().currentStep;
+    _animateToPage(current);
   }
 
   void _previousPage() {
-    _pageController.previousPage(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    final current = context.read<OnboardingProvider>().currentStep;
+    _animateToPage(current);
+  }
+
+  void _animateToPage(int page) {
+    if (_pageController.hasClients && _pageController.page?.round() != page) {
+      _pageController.animateToPage(
+        page,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeInOutCubic,
+      );
+    }
   }
 
   @override
@@ -64,6 +72,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final onboarding = context.watch<OnboardingProvider>();
     final currentStep = onboarding.currentStep;
+
+    // Synchronize page controller if changed via step buttons or edit summary cards
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _animateToPage(currentStep);
+    });
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -77,19 +90,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               stepTitle: _stepTitles[currentStep],
             ),
 
-            const Divider(height: 1),
-
             // Step Content PageView
             Expanded(
               child: PageView(
                 controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(), // Require guided navigation
+                physics: const NeverScrollableScrollPhysics(), // Require guided step navigation
                 onPageChanged: (page) => onboarding.setStep(page),
                 children: [
                   WelcomeStep(onNext: _nextPage),
                   CollegeStep(onNext: _nextPage, onPrevious: _previousPage),
                   AcademicInfoStep(onNext: _nextPage, onPrevious: _previousPage),
                   ProfileStep(onNext: _nextPage, onPrevious: _previousPage),
+                  PreferencesStep(onNext: _nextPage, onPrevious: _previousPage),
                   LegalVerificationStep(onNext: _nextPage, onPrevious: _previousPage),
                   CompletionStep(onPrevious: _previousPage),
                 ],

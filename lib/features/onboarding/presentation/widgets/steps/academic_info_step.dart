@@ -5,6 +5,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../auth/presentation/widgets/app_text_field.dart';
 import '../../../../auth/presentation/widgets/primary_button.dart';
 import '../../onboarding_provider.dart';
+import '../onboarding_classification_badge.dart';
 
 class AcademicInfoStep extends StatefulWidget {
   const AcademicInfoStep({
@@ -27,6 +28,14 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
   bool _isCustomDivision = false;
 
   @override
+  void initState() {
+    super.initState();
+    final onboarding = context.read<OnboardingProvider>();
+    _rollNumberController.text = onboarding.rollNumber;
+    _enrollmentController.text = onboarding.enrollmentNumber;
+  }
+
+  @override
   void dispose() {
     _customDivisionController.dispose();
     _rollNumberController.dispose();
@@ -45,12 +54,18 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Academic Identity',
-            style: textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Academic Identity',
+                style: textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.required),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingXs),
           Text(
@@ -63,12 +78,18 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           const SizedBox(height: AppDimensions.spacingXxl),
 
           // ── Course / Degree Program Selection ─────────────────────────────
-          Text(
-            'Degree / Course Program',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Degree / Course Program',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.optional),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingSm),
           Container(
@@ -80,7 +101,9 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String?>(
-                value: onboarding.selectedCourse?.id,
+                value: onboarding.courses.any((c) => c.id == onboarding.selectedCourse?.id)
+                    ? onboarding.selectedCourse?.id
+                    : null,
                 hint: Text('Select Degree Program (e.g. B.Tech, MCA, BE)',
                     style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
                 isExpanded: true,
@@ -112,64 +135,84 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           const SizedBox(height: AppDimensions.spacingXxl),
 
           // ── Branch Selection ──────────────────────────────────────────────
-          Text(
-            'Academic Branch / Specialization',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Academic Branch / Specialization',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.required),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingSm),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingLg),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-              border: Border.all(color: colorScheme.outline),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: (onboarding.filteredBranches.any((b) => b.name == onboarding.branch) ||
-                        OnboardingProvider.availableBranches.contains(onboarding.branch))
-                    ? onboarding.branch
-                    : (onboarding.filteredBranches.isNotEmpty
-                        ? onboarding.filteredBranches.first.name
-                        : OnboardingProvider.availableBranches.first),
-                isExpanded: true,
-                dropdownColor: colorScheme.surfaceContainerHighest,
-                items: (onboarding.filteredBranches.isNotEmpty
-                        ? onboarding.filteredBranches.map((b) => b.name).toSet().toList()
-                        : OnboardingProvider.availableBranches)
-                    .map((branchName) {
-                  return DropdownMenuItem<String>(
-                    value: branchName,
-                    child: Text(branchName, style: textTheme.bodyLarge),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    final branchModel =
-                        onboarding.branches.where((b) => b.name == val).firstOrNull;
-                    if (branchModel != null) {
-                      onboarding.setSelectedBranch(branchModel);
-                    } else {
-                      onboarding.setBranch(val);
-                    }
-                  }
-                },
-              ),
-            ),
+          Builder(
+            builder: (context) {
+              final rawItemsList = (onboarding.filteredBranches.isNotEmpty
+                      ? onboarding.filteredBranches.map((b) => b.name).toSet().toList()
+                      : OnboardingProvider.availableBranches);
+
+              final itemsList = rawItemsList.contains(onboarding.branch)
+                  ? rawItemsList
+                  : [onboarding.branch, ...rawItemsList];
+
+              final selectedValue = itemsList.contains(onboarding.branch)
+                  ? onboarding.branch
+                  : itemsList.first;
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingLg),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                  border: Border.all(color: colorScheme.outline),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedValue,
+                    isExpanded: true,
+                    dropdownColor: colorScheme.surfaceContainerHighest,
+                    items: itemsList.map((branchName) {
+                      return DropdownMenuItem<String>(
+                        value: branchName,
+                        child: Text(branchName, style: textTheme.bodyLarge),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        final branchModel =
+                            onboarding.branches.where((b) => b.name == val).firstOrNull;
+                        if (branchModel != null) {
+                          onboarding.setSelectedBranch(branchModel);
+                        } else {
+                          onboarding.setBranch(val);
+                        }
+                      }
+                    },
+                  ),
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: AppDimensions.spacingXxl),
 
           // ── Academic Year Selection ─────────────────────────────────────────
-          Text(
-            'Current Academic Year',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Current Academic Year',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.required),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingSm),
           Wrap(
@@ -193,12 +236,18 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           const SizedBox(height: AppDimensions.spacingXxl),
 
           // ── Semester Selection (1 to 8) ───────────────────────────────────
-          Text(
-            'Current Semester',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Current Semester',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.required),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingSm),
           Wrap(
@@ -222,12 +271,18 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           const SizedBox(height: AppDimensions.spacingXxl),
 
           // ── Division Selectable Value ─────────────────────────────────────
-          Text(
-            'Division / Section',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Division / Section',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.required),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingSm),
           Wrap(
@@ -264,23 +319,28 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           if (_isCustomDivision) ...[
             const SizedBox(height: AppDimensions.spacingMd),
             AppTextField(
-              label: 'Custom Division',
-              hint: 'Enter custom division (e.g., Sec-B1)',
+              label: 'Custom Division Name',
+              hint: 'e.g. Div K, Batch 2',
               controller: _customDivisionController,
-              prefixIcon: Icons.edit_note_rounded,
               onChanged: (val) => onboarding.setDivision(val),
             ),
           ],
 
           const SizedBox(height: AppDimensions.spacingXxl),
 
-          // ── Optional Student Identifiers ──────────────────────────────────
-          Text(
-            'Institutional Identifiers (Optional)',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          // ── Student Roll Number & Enrollment ────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Academic Identifiers',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.recommended),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingSm),
           Row(
@@ -288,7 +348,7 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
               Expanded(
                 child: AppTextField(
                   label: 'Roll Number',
-                  hint: 'e.g., 1042',
+                  hint: 'e.g. 26',
                   controller: _rollNumberController,
                   prefixIcon: Icons.badge_outlined,
                   onChanged: (val) => onboarding.setRollNumber(val),
@@ -297,8 +357,8 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
               const SizedBox(width: AppDimensions.spacingMd),
               Expanded(
                 child: AppTextField(
-                  label: 'Student / Enroll ID',
-                  hint: 'e.g., 2026-CS-09',
+                  label: 'Enrollment / Student ID',
+                  hint: 'e.g. 21012011005',
                   controller: _enrollmentController,
                   prefixIcon: Icons.fingerprint_rounded,
                   onChanged: (val) => onboarding.setEnrollmentNumber(val),

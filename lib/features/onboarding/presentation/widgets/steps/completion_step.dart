@@ -43,33 +43,46 @@ class CompletionStep extends StatelessWidget {
           authProvider: 'password',
         );
 
-    // Show persistent saving dialog
+    // Show step-by-step animated setup progression dialog
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogCtx) => PopScope(
         canPop: false,
         child: Dialog(
-          backgroundColor: const Color(0xFF141418),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusLg)),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          backgroundColor: const Color(0xFF0F1218),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+            side: const BorderSide(color: Color(0xFF27272A)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(color: AppColors.primary),
-                SizedBox(height: 20),
-                Text(
-                  'Finalizing Academic Identity...',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const CircularProgressIndicator(
+                    color: AppColors.primary,
+                    strokeWidth: 3,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Setting Up ScholarSync...',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 8),
-                Text(
-                  'Saving your verified profile and preparing your personal campus feed.',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                  textAlign: TextAlign.center,
-                ),
+                const SizedBox(height: 12),
+                _buildProgressItem('Creating student profile & avatar'),
+                _buildProgressItem('Persisting master academic identity'),
+                _buildProgressItem('Auto-enrolling semester subjects'),
+                _buildProgressItem('Configuring notification reminders & theme'),
+                _buildProgressItem('Preparing personal student workspace'),
               ],
             ),
           ),
@@ -87,7 +100,6 @@ class CompletionStep extends StatelessWidget {
       Navigator.of(context, rootNavigator: true).pop(); // Dismiss loading dialog
 
       if (updatedProfile != null) {
-        // Guarantee in-memory profile completion state
         final completedProfile = updatedProfile.copyWith(onboardingCompleted: true);
         profileProvider.setProfile(completedProfile);
 
@@ -98,7 +110,7 @@ class CompletionStep extends StatelessWidget {
                 Icon(Icons.check_circle_rounded, color: Colors.white),
                 SizedBox(width: 10),
                 Expanded(
-                  child: Text('Welcome to ScholarSync! Your academic profile is ready.'),
+                  child: Text('Welcome to ScholarSync! Your student workspace is ready.'),
                 ),
               ],
             ),
@@ -107,7 +119,6 @@ class CompletionStep extends StatelessWidget {
           ),
         );
 
-        // Smoothly route to home
         context.go('/home');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -119,7 +130,7 @@ class CompletionStep extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop(); // Dismiss loading dialog
+        Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error saving onboarding: $e'),
@@ -128,6 +139,24 @@ class CompletionStep extends StatelessWidget {
         );
       }
     }
+  }
+
+  Widget _buildProgressItem(String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.success),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -153,13 +182,13 @@ class CompletionStep extends StatelessWidget {
                   ),
                   child: const Icon(
                     Icons.task_alt_rounded,
-                    size: 50,
+                    size: 48,
                     color: AppColors.success,
                   ),
                 ),
                 const SizedBox(height: AppDimensions.spacingLg),
                 Text(
-                  'All Set! Review Your Profile',
+                  'Final Review & Verification',
                   style: textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onSurface,
@@ -168,7 +197,7 @@ class CompletionStep extends StatelessWidget {
                 ),
                 const SizedBox(height: AppDimensions.spacingXs),
                 Text(
-                  'Verify your student profile details before finalizing onboarding.',
+                  'Review your collected student information before initializing your workspace.',
                   style: textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -180,47 +209,82 @@ class CompletionStep extends StatelessWidget {
 
           const SizedBox(height: AppDimensions.spacingXxl),
 
-          // Summary Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(AppDimensions.spacingLg),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-              border: Border.all(color: colorScheme.outline.withValues(alpha: 0.5)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Profile Summary',
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const Divider(height: AppDimensions.spacingLg),
-                _buildSummaryRow(context, 'Full Name:', onboarding.fullName),
-                _buildSummaryRow(context, 'College:', onboarding.selectedCollege?.name ?? 'Not selected'),
-                _buildSummaryRow(context, 'Branch:', onboarding.branch),
-                _buildSummaryRow(context, 'Semester:', 'Semester ${onboarding.semester}'),
-                _buildSummaryRow(context, 'Division:', 'Division ${onboarding.division}'),
-                _buildSummaryRow(
-                  context,
-                  'Verification:',
-                  onboarding.isEmailVerified
-                      ? '✓ Instant Email Verified'
-                      : (onboarding.idCardBytes != null
-                          ? '🛡️ Queued for Admin Review'
-                          : 'Pending Verification'),
-                ),
-                _buildSummaryRow(
-                  context,
-                  'Legal Terms:',
-                  onboarding.legalUndertakingAccepted ? '✓ Self-Concern Guaranteed' : 'Pending',
-                ),
-              ],
-            ),
+          // ── Card 1: Account & Profile ─────────────────────────────────────
+          _buildReviewSection(
+            context,
+            title: 'Account & Profile',
+            icon: Icons.person_rounded,
+            onEdit: () => onboarding.setStep(3),
+            children: [
+              _buildSummaryRow(context, 'Full Name:', onboarding.fullName),
+              if (onboarding.bio.isNotEmpty)
+                _buildSummaryRow(context, 'Student Bio:', onboarding.bio),
+              if (onboarding.selectedInterests.isNotEmpty)
+                _buildSummaryRow(context, 'Interests:', onboarding.selectedInterests.join(', ')),
+            ],
+          ),
+
+          const SizedBox(height: AppDimensions.spacingLg),
+
+          // ── Card 2: Academic Institution ──────────────────────────────────
+          _buildReviewSection(
+            context,
+            title: 'Academic Institution',
+            icon: Icons.account_balance_rounded,
+            onEdit: () => onboarding.setStep(1),
+            children: [
+              _buildSummaryRow(context, 'College:', onboarding.selectedCollege?.name ?? 'Custom Institution'),
+              if (onboarding.selectedState != null)
+                _buildSummaryRow(context, 'State:', onboarding.selectedState!.name),
+              if (onboarding.selectedUniversity != null)
+                _buildSummaryRow(context, 'University:', onboarding.selectedUniversity!.name),
+            ],
+          ),
+
+          const SizedBox(height: AppDimensions.spacingLg),
+
+          // ── Card 3: Curriculum Identity ───────────────────────────────────
+          _buildReviewSection(
+            context,
+            title: 'Curriculum Identity',
+            icon: Icons.school_rounded,
+            onEdit: () => onboarding.setStep(2),
+            children: [
+              _buildSummaryRow(context, 'Branch:', onboarding.branch),
+              _buildSummaryRow(context, 'Academic Year:', onboarding.academicYear),
+              _buildSummaryRow(context, 'Semester:', 'Semester ${onboarding.semester}'),
+              _buildSummaryRow(context, 'Division:', 'Division ${onboarding.division}'),
+              if (onboarding.rollNumber.isNotEmpty)
+                _buildSummaryRow(context, 'Roll Number:', onboarding.rollNumber),
+              if (onboarding.enrollmentNumber.isNotEmpty)
+                _buildSummaryRow(context, 'Enrollment #:', onboarding.enrollmentNumber),
+            ],
+          ),
+
+          const SizedBox(height: AppDimensions.spacingLg),
+
+          // ── Card 4: Preferences & Legal ───────────────────────────────────
+          _buildReviewSection(
+            context,
+            title: 'Preferences & Legal',
+            icon: Icons.shield_rounded,
+            onEdit: () => onboarding.setStep(4),
+            children: [
+              _buildSummaryRow(context, 'Notifications:', onboarding.notificationsEnabled ? 'Enabled (${onboarding.reminderPreference})' : 'Disabled'),
+              _buildSummaryRow(context, 'App Theme:', onboarding.themePreference),
+              _buildSummaryRow(
+                context,
+                'Verification:',
+                onboarding.isEmailVerified
+                    ? '✓ Instant Email Verified'
+                    : (onboarding.idCardBytes != null ? '🛡️ ID Card Uploaded (Pending Review)' : 'Pending'),
+              ),
+              _buildSummaryRow(
+                context,
+                'Legal Terms:',
+                onboarding.legalUndertakingAccepted ? '✓ Guarantee Accepted' : 'Pending',
+              ),
+            ],
           ),
 
           if (onboarding.error != null) ...[
@@ -263,14 +327,81 @@ class CompletionStep extends StatelessWidget {
               const SizedBox(width: AppDimensions.spacingMd),
               Expanded(
                 child: PrimaryButton(
-                  label: 'Finish & Go to Home',
+                  label: 'Complete Setup & Launch',
                   isLoading: onboarding.isLoading,
                   onPressed: () => _handleFinish(context),
-                  icon: Icons.check_circle_rounded,
+                  icon: Icons.rocket_launch_rounded,
                 ),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewSection(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required VoidCallback onEdit,
+    required List<Widget> children,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppDimensions.spacingLg),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 18, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    title,
+                    style: textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: onEdit,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.edit_rounded, size: 13, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Edit',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: AppDimensions.spacingLg),
+          ...children,
         ],
       ),
     );
@@ -281,7 +412,7 @@ class CompletionStep extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.only(bottom: 6.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -289,7 +420,7 @@ class CompletionStep extends StatelessWidget {
             width: 110,
             child: Text(
               label,
-              style: textTheme.bodyMedium?.copyWith(
+              style: textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -298,7 +429,7 @@ class CompletionStep extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: textTheme.bodyMedium?.copyWith(
+              style: textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),

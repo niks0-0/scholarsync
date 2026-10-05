@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,10 @@ import '../../../dashboard/presentation/widgets/greeting_header_card.dart';
 import '../../../attendance/presentation/widgets/smart_insights_sheet.dart';
 import '../../../leaderboard/domain/models/leaderboard_models.dart';
 import '../../../leaderboard/presentation/leaderboard_provider.dart';
+import '../dashboard_personalization_provider.dart';
+import '../dashboard_provider.dart';
+import '../dashboard_widget_registry.dart';
+import '../widgets/dashboard_edit_mode_sheet.dart';
 
 /// ScholarSync Home — Focus Wheel radial nav + Bento Grid tiles.
 /// Phone-first. AMOLED-optimized. Student-autonomous.
@@ -29,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final user = context.read<AuthProvider>().currentUser;
       if (user != null) {
         context.read<AttendanceProvider>().loadAttendance(user.uid);
+        context.read<DashboardProvider>().loadDashboard(user.uid);
       }
     });
   }
@@ -49,7 +55,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final attendance = context.watch<AttendanceProvider>();
+    final personalization = context.watch<DashboardPersonalizationProvider>();
     final bg = isDark ? AppColors.darkBackground : AppColors.background;
+
+    final displayIds = personalization.displayWidgetIds;
+    final isCustomized = personalization.pinnedWidgetIds.isNotEmpty ||
+        personalization.hiddenWidgetIds.isNotEmpty ||
+        !listEquals(personalization.activeWidgetIds, DashboardWidgetRegistry.defaultOrder);
 
     return Scaffold(
       backgroundColor: bg,
@@ -58,7 +70,10 @@ class _HomeScreenState extends State<HomeScreen> {
           onRefresh: () async {
             final user = context.read<AuthProvider>().currentUser;
             if (user != null) {
-              await context.read<AttendanceProvider>().loadAttendance(user.uid);
+              await Future.wait([
+                context.read<AttendanceProvider>().loadAttendance(user.uid),
+                context.read<DashboardProvider>().loadDashboard(user.uid),
+              ]);
             }
           },
           color: AppColors.primary,
@@ -66,66 +81,125 @@ class _HomeScreenState extends State<HomeScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               // ── Greeting Header ───────────────────────────────────────────
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: GreetingHeaderCard(),
-                ),
-              ),
-
-              // ── Focus Hero Carousel (Rotating Card Cycle) ────────────────
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: _FocusCardCarousel(
-                    attendance: attendance,
-                    onOpenInsights: _openInsights,
-                    isDark: isDark,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: displayIds.contains('greeting')
+                      ? const GreetingHeaderCard()
+                      : _MinimalCustomizeHeader(isDark: isDark),
                 ),
               ),
 
-              // ── Section Label ─────────────────────────────────────────────
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                sliver: SliverToBoxAdapter(
-                  child: Row(
-                    children: [
-                      Text(
-                        'Overview',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: isDark
-                                  ? AppColors.darkTextSecondary
-                                  : AppColors.textSecondary,
-                              letterSpacing: 0.6,
-                              fontSize: 11,
-                            ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Divider(
-                          color: isDark
-                              ? AppColors.darkBorder
-                              : AppColors.border,
+              // ── Focus Hero Carousel ───────────────────────────────────────
+              if (!isCustomized || displayIds.contains('today_classes') || displayIds.contains('attendance_summary'))
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: _FocusCardCarousel(
+                      attendance: attendance,
+                      onOpenInsights: _openInsights,
+                      isDark: isDark,
+                    ),
+                  ),
+                ),
+
+              // ── Dynamic Personalized Layout OR Standard Bento Overview ───
+              if (isCustomized) ...[
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final nonGreetingIds = displayIds.where((id) => id != 'greeting').toList();
+                        if (index >= nonGreetingIds.length) return null;
+                        final id = nonGreetingIds[index];
+                        final config = DashboardWidgetRegistry.getWidget(id);
+                        if (config == null) return const SizedBox.shrink();
+                        final isPinned = personalization.pinnedWidgetIds.contains(id);
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Stack(
+                            children: [
+                              config.builder(context),
+                              if (isPinned)
+                                Positioned(
+                                  top: 12,
+                                  right: 12,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.9),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.push_pin_rounded, size: 10, color: Colors.white),
+                                        SizedBox(width: 3),
+                                        Text(
+                                          'PINNED',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w900,
+                                            color: Colors.white,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                      childCount: displayIds.where((id) => id != 'greeting').length,
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // ── Standard Default Layout (Overview Bento Grid) ─────────
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                  sliver: SliverToBoxAdapter(
+                    child: Row(
+                      children: [
+                        Text(
+                          'Overview',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textSecondary,
+                                letterSpacing: 0.6,
+                                fontSize: 11,
+                              ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Divider(
+                            color: isDark
+                                ? AppColors.darkBorder
+                                : AppColors.border,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-              // ── Bento Grid ────────────────────────────────────────────────
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                sliver: SliverToBoxAdapter(
-                  child: _BentoGrid(
-                    attendance: attendance,
-                    isDark: isDark,
-                    onOpenInsights: _openInsights,
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                  sliver: SliverToBoxAdapter(
+                    child: _BentoGrid(
+                      attendance: attendance,
+                      isDark: isDark,
+                      onOpenInsights: _openInsights,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -133,6 +207,45 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+class _MinimalCustomizeHeader extends StatelessWidget {
+  const _MinimalCustomizeHeader({required this.isDark});
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF141418) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'ScholarSync Dashboard',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          IconButton(
+            icon: const Icon(Icons.tune_rounded, color: AppColors.primary),
+            tooltip: 'Customize Dashboard',
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const DashboardEditModeSheet(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 // ── Focus Card Carousel (Swipeable 3D Deck) ──────────────────────────────────
 

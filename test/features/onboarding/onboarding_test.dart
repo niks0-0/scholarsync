@@ -242,6 +242,7 @@ void main() {
   late MockStorageRepository mockStorageRepo;
 
   setUp(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
     mockCollegeRepo = MockCollegeRepository();
     mockProfileRepo = MockProfileRepository();
     mockAcademicRepo = MockAcademicCatalogRepository();
@@ -334,24 +335,24 @@ void main() {
       expect(onboardingProvider.error, contains('Failed to save academic identity'));
     });
 
-    test('Validation on Step 4 fails if legal undertaking is not accepted', () {
-      onboardingProvider.setStep(4);
+    test('Validation on Step 5 fails if legal undertaking is not accepted', () {
+      onboardingProvider.setStep(5);
       onboardingProvider.setLegalUndertaking(false);
       onboardingProvider.setTermsAccepted(false);
 
-      final isValid = onboardingProvider.validateStep(4);
+      final isValid = onboardingProvider.validateStep(5);
       expect(isValid, isFalse);
       expect(onboardingProvider.error, contains('Self-Concern & Attendance Responsibility Guarantee'));
     });
 
-    test('Validation on Step 4 passes when legal undertaking and terms are accepted with ID card', () {
-      onboardingProvider.setStep(4);
+    test('Validation on Step 5 passes when legal undertaking and terms are accepted with ID card', () {
+      onboardingProvider.setStep(5);
       onboardingProvider.setLegalUndertaking(true);
       onboardingProvider.setTermsAccepted(true);
       onboardingProvider.setVerificationMethod('college_id');
       onboardingProvider.setIdCardBytes(Uint8List.fromList([1, 2, 3]));
 
-      final isValid = onboardingProvider.validateStep(4);
+      final isValid = onboardingProvider.validateStep(5);
       expect(isValid, isTrue);
       expect(onboardingProvider.error, isNull);
     });

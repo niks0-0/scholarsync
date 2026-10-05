@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/constants/app_dimensions.dart';
+import '../../../../../core/services/notification_service.dart';
 import '../../../../../core/services/theme_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../auth/presentation/widgets/primary_button.dart';
 import '../../onboarding_provider.dart';
+import '../onboarding_classification_badge.dart';
 
 class PreferencesStep extends StatelessWidget {
   const PreferencesStep({
@@ -35,16 +37,22 @@ class PreferencesStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Application Preferences',
-            style: textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Application Preferences',
+                style: textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.recommended),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingXs),
           Text(
-            'Configure your default notification reminders and app appearance.',
+            'Configure default notification reminder windows and application color theme.',
             style: textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -52,7 +60,7 @@ class PreferencesStep extends StatelessWidget {
 
           const SizedBox(height: AppDimensions.spacingXxl),
 
-          // Notification Toggle
+          // Just-In-Time Push Notification Permission Card
           Container(
             padding: const EdgeInsets.all(AppDimensions.spacingLg),
             decoration: BoxDecoration(
@@ -60,34 +68,67 @@ class PreferencesStep extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
               border: Border.all(color: colorScheme.outline.withValues(alpha: 0.5)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Push Notifications',
-                        style: textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.notifications_active_rounded, color: AppColors.primary, size: 20),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Receive reminders for class timetables & deadlines',
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                        const SizedBox(width: 10),
+                        Text(
+                          'Push Notifications',
+                          style: textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Switch.adaptive(
+                      value: onboarding.notificationsEnabled,
+                      activeTrackColor: AppColors.primary,
+                      onChanged: (val) async {
+                        onboarding.setNotificationsEnabled(val);
+                        if (val) {
+                          await NotificationService.instance.initialize();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Just-In-Time Purpose: Receive 15-min class reminders, lecture room changes, assignment deadline alerts, and official college broadcasts.',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                Switch.adaptive(
-                  value: onboarding.notificationsEnabled,
-                  activeTrackColor: AppColors.primary,
-                  onChanged: (val) => onboarding.setNotificationsEnabled(val),
                 ),
               ],
             ),
@@ -96,12 +137,18 @@ class PreferencesStep extends StatelessWidget {
           const SizedBox(height: AppDimensions.spacingXxl),
 
           // Default Class Reminder Behavior
-          Text(
-            'Class & Assignment Reminder Window',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Class & Assignment Reminder Window',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.recommended),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingSm),
           Wrap(
@@ -124,13 +171,19 @@ class PreferencesStep extends StatelessWidget {
 
           const SizedBox(height: AppDimensions.spacingXxl),
 
-          // Theme Preference (Integrates with existing ThemeService)
-          Text(
-            'Theme Preference',
-            style: textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          // Theme Preference
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Application Appearance Theme',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.optional),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingSm),
           Row(
@@ -140,7 +193,10 @@ class PreferencesStep extends StatelessWidget {
                   avatar: const Icon(Icons.brightness_auto_rounded, size: 18),
                   label: const Text('System'),
                   selected: themeService.mode == ThemeMode.system,
-                  onSelected: (_) => themeService.setThemeMode(ThemeMode.system),
+                  onSelected: (_) {
+                    themeService.setThemeMode(ThemeMode.system);
+                    onboarding.setThemePreference('System');
+                  },
                 ),
               ),
               const SizedBox(width: AppDimensions.spacingSm),
@@ -149,7 +205,10 @@ class PreferencesStep extends StatelessWidget {
                   avatar: const Icon(Icons.light_mode_rounded, size: 18),
                   label: const Text('Light'),
                   selected: themeService.mode == ThemeMode.light,
-                  onSelected: (_) => themeService.setThemeMode(ThemeMode.light),
+                  onSelected: (_) {
+                    themeService.setThemeMode(ThemeMode.light);
+                    onboarding.setThemePreference('Light');
+                  },
                 ),
               ),
               const SizedBox(width: AppDimensions.spacingSm),
@@ -158,7 +217,10 @@ class PreferencesStep extends StatelessWidget {
                   avatar: const Icon(Icons.dark_mode_rounded, size: 18),
                   label: const Text('Dark'),
                   selected: themeService.mode == ThemeMode.dark,
-                  onSelected: (_) => themeService.setThemeMode(ThemeMode.dark),
+                  onSelected: (_) {
+                    themeService.setThemeMode(ThemeMode.dark);
+                    onboarding.setThemePreference('Dark');
+                  },
                 ),
               ),
             ],

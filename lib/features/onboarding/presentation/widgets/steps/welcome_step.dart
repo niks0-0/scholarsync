@@ -20,6 +20,7 @@ class WelcomeStep extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final auth = context.watch<AuthProvider>();
     final profileProvider = context.watch<ProfileProvider>();
+    final onboarding = context.watch<OnboardingProvider>();
     final user = auth.currentUser;
     final profile = profileProvider.profile;
 
@@ -32,6 +33,71 @@ class WelcomeStep extends StatelessWidget {
         children: [
           const AppLogo(variant: LogoVariant.full, width: 180),
           const SizedBox(height: AppDimensions.spacingXl),
+
+          // Resume Draft Banner if local draft exists
+          if (onboarding.hasDraftLoaded) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.2),
+                    const Color(0xFF0F172A),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.history_rounded, color: Colors.black, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Welcome Back! 👋',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Your ScholarSync setup is in progress. Continue where you left off?',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      onboarding.clearDraftLocal();
+                    },
+                    child: const Text(
+                      'Reset',
+                      style: TextStyle(color: Colors.white60, fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppDimensions.spacingXl),
+          ],
+
           // User Avatar / Logo Badge
           Container(
             padding: const EdgeInsets.all(4),
@@ -68,7 +134,7 @@ class WelcomeStep extends StatelessWidget {
           const SizedBox(height: AppDimensions.spacingMd),
 
           Text(
-            'Your Smart Academic Companion',
+            'Your Professional Student Workspace',
             style: textTheme.titleMedium?.copyWith(
               color: AppColors.primary,
               fontWeight: FontWeight.w600,
@@ -91,21 +157,21 @@ class WelcomeStep extends StatelessWidget {
                   context,
                   icon: Icons.calendar_today_rounded,
                   title: 'Timetable & Class Schedules',
-                  subtitle: 'Stay on top of your lectures and exam dates.',
+                  subtitle: 'Single source of truth for recurring academic classes.',
                 ),
                 const SizedBox(height: AppDimensions.spacingLg),
                 _buildFeatureRow(
                   context,
                   icon: Icons.check_circle_outline_rounded,
-                  title: 'Attendance Tracker',
-                  subtitle: 'Monitor attendance percentages effortlessly.',
+                  title: 'Attendance Guard & Threshold Alerts',
+                  subtitle: 'Track lecture attendance and receive warning notices.',
                 ),
                 const SizedBox(height: AppDimensions.spacingLg),
                 _buildFeatureRow(
                   context,
-                  icon: Icons.assignment_outlined,
-                  title: 'Assignments & Deadlines',
-                  subtitle: 'Never miss a submission date again.',
+                  icon: Icons.menu_book_rounded,
+                  title: 'Verified Course Notes Repository',
+                  subtitle: 'Access college syllabus notes and exam preparation materials.',
                 ),
               ],
             ),
@@ -114,7 +180,7 @@ class WelcomeStep extends StatelessWidget {
           const SizedBox(height: AppDimensions.spacingXxxl),
 
           PrimaryButton(
-            label: 'Get Started with Setup',
+            label: onboarding.hasDraftLoaded ? 'Continue Guided Setup' : 'Get Started with Setup',
             onPressed: () {
               context.read<OnboardingProvider>().nextStep();
               onNext();
@@ -152,7 +218,7 @@ class WelcomeStep extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: textTheme.bodyLarge?.copyWith(
+                style: textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: colorScheme.onSurface,
                 ),

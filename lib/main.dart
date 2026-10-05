@@ -33,6 +33,7 @@ import 'features/attendance/domain/repositories/attendance_repository.dart';
 import 'features/attendance/presentation/attendance_provider.dart';
 import 'features/leaderboard/data/repositories/leaderboard_repository.dart';
 import 'features/leaderboard/presentation/leaderboard_provider.dart';
+import 'core/config/app_config_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,6 +91,9 @@ class ScholarSyncApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<ThemeService>(
           create: (_) => ThemeService(),
+        ),
+        ChangeNotifierProvider<AppConfigProvider>(
+          create: (_) => AppConfigProvider(),
         ),
         ChangeNotifierProvider<AuthProvider>(
           create: (_) => AuthProvider(),

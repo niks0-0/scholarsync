@@ -307,17 +307,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                               const SizedBox(height: 16),
 
-                              // ── Email ────────────────────────────────────────
+                              // ── Email / Username ────────────────────────────────────────
                               AppTextField(
-                                label: AppStrings.fieldEmail,
-                                hint: AppStrings.fieldEmailHint,
+                                label: 'Email or Username',
+                                hint: 'Enter your email address or username',
                                 controller: _emailController,
                                 focusNode: _emailFocus,
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
-                                validator: AppValidators.email,
-                                autofillHints: const [AutofillHints.email],
-                                prefixIcon: Icons.email_outlined,
+                                validator: AppValidators.emailOrUsername,
+                                autofillHints: const [AutofillHints.email, AutofillHints.username],
+                                prefixIcon: Icons.person_outline_rounded,
                                 onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_passwordFocus),
                               ),
 

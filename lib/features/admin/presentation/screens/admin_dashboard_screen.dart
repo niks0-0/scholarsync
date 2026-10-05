@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/config/app_config_provider.dart';
 import '../admin_provider.dart';
 
 /// Elite Executive Mission Control & Command Center for ScholarSync App Owner.
@@ -321,6 +322,103 @@ class AdminDashboardScreen extends StatelessWidget {
                 onTap: () => context.go('/admin/students'),
               ),
             ],
+          ),
+          const SizedBox(height: 28),
+
+          // ── System Controls & Fast Testing Config ───────────────────
+          Text(
+            'System Controls & Fast Testing Config',
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Consumer<AppConfigProvider>(
+            builder: (context, appConfig, _) {
+              return Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F1218),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                  border: Border.all(
+                    color: appConfig.requireEmailVerification
+                        ? AppColors.primary.withValues(alpha: 0.4)
+                        : AppColors.warning.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: appConfig.requireEmailVerification
+                            ? AppColors.primary.withValues(alpha: 0.15)
+                            : AppColors.warning.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        appConfig.requireEmailVerification
+                            ? Icons.mark_email_read_rounded
+                            : Icons.mark_email_unread_rounded,
+                        color: appConfig.requireEmailVerification
+                            ? AppColors.primary
+                            : AppColors.warning,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Email Verification Service',
+                            style: textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            appConfig.requireEmailVerification
+                                ? 'ON • Require full email link verification'
+                                : 'OFF • Fast Testing Mode (Skip verification & instant DB register)',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: appConfig.requireEmailVerification
+                                  ? AppColors.success
+                                  : AppColors.warning,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: appConfig.requireEmailVerification,
+                      activeThumbColor: AppColors.primary,
+                      inactiveTrackColor: AppColors.warning.withValues(alpha: 0.2),
+                      inactiveThumbColor: AppColors.warning,
+                      onChanged: (val) async {
+                        final success = await appConfig.setRequireEmailVerification(val);
+                        if (context.mounted && success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                val
+                                    ? 'Email verification service ENABLED'
+                                    : 'Email verification service DISABLED (Fast Testing Mode)',
+                              ),
+                              backgroundColor: val ? AppColors.primary : AppColors.warning,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           const SizedBox(height: 28),
 

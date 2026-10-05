@@ -6,6 +6,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../auth/presentation/widgets/app_text_field.dart';
 import '../../../../auth/presentation/widgets/primary_button.dart';
 import '../../onboarding_provider.dart';
+import '../onboarding_classification_badge.dart';
 
 /// Luxury Matte Dark Step for Legal Undertakings and Dual-Method Student Verification.
 class LegalVerificationStep extends StatefulWidget {
@@ -115,12 +116,18 @@ class _LegalVerificationStepState extends State<LegalVerificationStep> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Section Header ───────────────────────────────────────────────
-          Text(
-            'Legal Undertaking & Verification',
-            style: textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Legal Undertaking & Verification',
+                style: textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const OnboardingClassificationBadge(level: ClassificationLevel.required),
+            ],
           ),
           const SizedBox(height: AppDimensions.spacingXs),
           Text(
