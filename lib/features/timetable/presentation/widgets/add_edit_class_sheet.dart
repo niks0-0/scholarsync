@@ -4,6 +4,7 @@ import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../academic_catalog/domain/models/subject.dart';
 import '../../../academic_catalog/presentation/academic_catalog_provider.dart';
+import '../../../attendance/presentation/attendance_provider.dart';
 import '../../../auth/presentation/widgets/app_text_field.dart';
 import '../../domain/models/timetable_entry.dart';
 import '../timetable_provider.dart';
@@ -28,6 +29,9 @@ class _AddEditClassSheetState extends State<AddEditClassSheet> {
   final _formKey = GlobalKey<FormState>();
 
   Subject? _selectedSubject;
+  bool _isCustomSubject = false;
+  final TextEditingController _customSubjectCodeController = TextEditingController();
+  final TextEditingController _customSubjectNameController = TextEditingController();
   late int _weekday;
   TimeOfDay _startTime = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 10, minute: 30);
@@ -95,6 +99,8 @@ class _AddEditClassSheetState extends State<AddEditClassSheet> {
 
   @override
   void dispose() {
+    _customSubjectCodeController.dispose();
+    _customSubjectNameController.dispose();
     _roomController.dispose();
     _buildingController.dispose();
     _facultyController.dispose();
@@ -122,8 +128,25 @@ class _AddEditClassSheetState extends State<AddEditClassSheet> {
   Future<void> _saveForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedSubject == null) {
-      setState(() => _errorMessage = 'Please select a subject from your academic catalog.');
+    Subject? effectiveSubject = _selectedSubject;
+    if (effectiveSubject == null && _customSubjectNameController.text.trim().isNotEmpty) {
+      final name = _customSubjectNameController.text.trim();
+      final code = _customSubjectCodeController.text.trim().isEmpty ? 'ACAD' : _customSubjectCodeController.text.trim().toUpperCase();
+      effectiveSubject = Subject(
+        id: 'sub_custom_${DateTime.now().millisecondsSinceEpoch}',
+        subjectCode: code,
+        subjectName: name,
+        shortName: code,
+        semester: _weekday,
+        branch: 'General',
+        theory: true,
+        practical: false,
+        credits: 3,
+      );
+    }
+
+    if (effectiveSubject == null) {
+      setState(() => _errorMessage = 'Please select or enter a subject for this class.');
       return;
     }
 
@@ -144,7 +167,7 @@ class _AddEditClassSheetState extends State<AddEditClassSheet> {
     final entry = TimetableEntry(
       id: widget.entryToEdit?.id ?? '',
       userId: widget.firebaseUid,
-      subjectId: _selectedSubject!.id,
+      subjectId: effectiveSubject.id,
       weekday: _weekday,
       startTime: startStr,
       endTime: endStr,
@@ -156,7 +179,7 @@ class _AddEditClassSheetState extends State<AddEditClassSheet> {
       classType: _classType,
       notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
       reminderMinutes: _reminderMinutes,
-      subject: _selectedSubject,
+      subject: effectiveSubject,
     );
 
     final provider = context.read<TimetableProvider>();
@@ -169,6 +192,7 @@ class _AddEditClassSheetState extends State<AddEditClassSheet> {
 
     if (mounted) {
       if (success) {
+        context.read<AttendanceProvider>().syncTodayClasses(provider.weeklySchedule);
         Navigator.of(context).pop();
       } else {
         setState(() {
@@ -185,16 +209,28 @@ class _AddEditClassSheetState extends State<AddEditClassSheet> {
     final colorScheme = Theme.of(context).colorScheme;
     final catalogSubjects = context.watch<AcademicCatalogProvider>().curriculumSubjects;
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      padding: const EdgeInsets.all(AppDimensions.spacingLg),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusXxl)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    final mediaQuery = MediaQuery.of(context);
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: mediaQuery.size.height * 0.88,
+        ),
+        padding: EdgeInsets.fromLTRB(
+          AppDimensions.spacingLg,
+          AppDimensions.spacingLg,
+          AppDimensions.spacingLg,
+          mediaQuery.viewInsets.bottom + AppDimensions.spacingLg,
+        ),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusXxl)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Center(
             child: Container(
               width: 40,
@@ -237,7 +273,7 @@ class _AddEditClassSheetState extends State<AddEditClassSheet> {
             const SizedBox(height: AppDimensions.spacingMd),
           ],
 
-          Expanded(
+          Flexible(
             child: Form(
               key: _formKey,
               child: SingleChildScrollView(
@@ -245,23 +281,56 @@ class _AddEditClassSheetState extends State<AddEditClassSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Subject Selector
-                    Text('Subject', style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<Subject>(
-                      initialValue: catalogSubjects.contains(_selectedSubject) ? _selectedSubject : null,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        hintText: 'Select curriculum subject...',
-                        prefixIcon: Icon(Icons.menu_book_rounded),
-                      ),
-                      items: catalogSubjects.map((s) {
-                        return DropdownMenuItem<Subject>(
-                          value: s,
-                          child: Text('${s.subjectCode} - ${s.subjectName}'),
-                        );
-                      }).toList(),
-                      onChanged: (val) => setState(() => _selectedSubject = val),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Subject', style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold)),
+                        if (catalogSubjects.isNotEmpty)
+                          TextButton(
+                            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                            onPressed: () => setState(() => _isCustomSubject = !_isCustomSubject),
+                            child: Text(
+                              _isCustomSubject ? 'Choose from Catalog' : '+ Custom Subject',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                      ],
                     ),
+                    const SizedBox(height: 6),
+                    if (catalogSubjects.isNotEmpty && !_isCustomSubject)
+                      DropdownButtonFormField<Subject>(
+                        initialValue: catalogSubjects.contains(_selectedSubject) ? _selectedSubject : null,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          hintText: 'Select curriculum subject...',
+                          prefixIcon: Icon(Icons.menu_book_rounded),
+                        ),
+                        items: catalogSubjects.map((s) {
+                          return DropdownMenuItem<Subject>(
+                            value: s,
+                            child: Text('${s.subjectCode} - ${s.subjectName}', overflow: TextOverflow.ellipsis),
+                          );
+                        }).toList(),
+                        onChanged: (val) => setState(() => _selectedSubject = val),
+                      )
+                    else ...[
+                      TextFormField(
+                        controller: _customSubjectNameController,
+                        decoration: const InputDecoration(
+                          hintText: 'Subject Name (e.g. Data Structures)',
+                          prefixIcon: Icon(Icons.school_outlined),
+                        ),
+                        validator: (val) => (val == null || val.trim().isEmpty) ? 'Please enter a subject name' : null,
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _customSubjectCodeController,
+                        decoration: const InputDecoration(
+                          hintText: 'Subject Code (e.g. CS201)',
+                          prefixIcon: Icon(Icons.tag_rounded),
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: AppDimensions.spacingLg),
 
@@ -443,6 +512,7 @@ class _AddEditClassSheetState extends State<AddEditClassSheet> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

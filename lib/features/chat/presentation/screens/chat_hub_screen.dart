@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../admin/presentation/admin_provider.dart';
+import '../../../auth/auth_provider.dart';
+import '../../../profile/presentation/profile_provider.dart';
+import '../chat_provider.dart';
 import 'chat_room_screen.dart';
 
-/// Student Academic Community & Realtime Chat Hub with Clean Modern Minimalist Design.
+/// Student Academic Community & Realtime Chat Hub wired directly to live Supabase backend.
 class ChatHubScreen extends StatefulWidget {
   const ChatHubScreen({super.key});
 
@@ -22,7 +24,8 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AdminProvider>().loadChatRooms();
+      final collegeId = context.read<ProfileProvider>().profile?.collegeId;
+      context.read<ChatProvider>().loadRooms(collegeId: collegeId);
     });
   }
 
@@ -32,12 +35,171 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
     super.dispose();
   }
 
+  void _openCreateRoomSheet() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    String selectedCat = 'academic';
+    String selectedPolicy = 'public_academic';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Request New Study Lounge',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Student rooms require approval from the campus moderation team before becoming visible.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Room Name',
+                        hintText: 'e.g., Computer Networks Exam Prep',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Description / Purpose',
+                        hintText: 'What topics or projects will be discussed?',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: selectedCat,
+                      decoration: const InputDecoration(
+                        labelText: 'Category',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'academic', child: Text('Academic & Curriculum')),
+                        DropdownMenuItem(value: 'project_study', child: Text('Project & Study Group')),
+                        DropdownMenuItem(value: 'interest_skill', child: Text('Skills & Tech Club')),
+                        DropdownMenuItem(value: 'events_activities', child: Text('Campus Activities')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setSheetState(() => selectedCat = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: selectedPolicy,
+                      decoration: const InputDecoration(
+                        labelText: 'Joining Policy',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'public_academic', child: Text('Open to Verified Students')),
+                        DropdownMenuItem(value: 'college_verified', child: Text('Same College Only')),
+                        DropdownMenuItem(value: 'department_semester', child: Text('Same Branch & Semester')),
+                        DropdownMenuItem(value: 'approval_required', child: Text('Approval Required to Join')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setSheetState(() => selectedPolicy = val);
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        icon: const Icon(Icons.send_rounded, size: 18),
+                        label: const Text('Submit Request for Review', style: TextStyle(fontWeight: FontWeight.w700)),
+                        onPressed: () async {
+                          final name = nameCtrl.text.trim();
+                          if (name.isEmpty) return;
+
+                          final user = context.read<AuthProvider>().currentUser;
+                          final profile = context.read<ProfileProvider>().profile;
+                          if (user == null) return;
+
+                          Navigator.pop(ctx);
+                          final ok = await context.read<ChatProvider>().submitRoomCreation(
+                                requesterId: user.uid,
+                                name: name,
+                                category: selectedCat,
+                                description: descCtrl.text.trim(),
+                                collegeId: profile?.collegeId,
+                                branch: profile?.branch,
+                                semester: profile?.semester,
+                              );
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(ok
+                                    ? 'Study lounge request submitted! Moderators will review it shortly.'
+                                    : 'Failed to submit room request. Please try again.'),
+                                backgroundColor: ok ? AppColors.success : AppColors.error,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final admin = context.watch<AdminProvider>();
-    final allRooms = admin.chatRooms;
+    final chat = context.watch<ChatProvider>();
+    final allRooms = chat.rooms;
+    final profile = context.watch<ProfileProvider>().profile;
 
     final filteredRooms = allRooms.where((r) {
       if (_selectedCategory != null && r.type != _selectedCategory) return false;
@@ -52,6 +214,13 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openCreateRoomSheet,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.black,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('New Lounge', style: TextStyle(fontWeight: FontWeight.w700)),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(
@@ -85,7 +254,7 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                   ),
                   IconButton.filledTonal(
                     icon: const Icon(Icons.refresh_rounded),
-                    onPressed: () => admin.loadChatRooms(),
+                    onPressed: () => chat.loadRooms(collegeId: profile?.collegeId),
                     tooltip: 'Refresh Channels',
                   ),
                 ],
@@ -145,21 +314,27 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                     ),
                     const SizedBox(width: 8),
                     ChoiceChip(
-                      label: const Text('Subjects'),
-                      selected: _selectedCategory == 'subject',
-                      onSelected: (_) => setState(() => _selectedCategory = 'subject'),
+                      label: const Text('Curriculum'),
+                      selected: _selectedCategory == 'academic',
+                      onSelected: (_) => setState(() => _selectedCategory = 'academic'),
                     ),
                     const SizedBox(width: 8),
                     ChoiceChip(
-                      label: const Text('Batch Lounges'),
-                      selected: _selectedCategory == 'batch',
-                      onSelected: (_) => setState(() => _selectedCategory = 'batch'),
+                      label: const Text('Projects'),
+                      selected: _selectedCategory == 'project_study',
+                      onSelected: (_) => setState(() => _selectedCategory = 'project_study'),
                     ),
                     const SizedBox(width: 8),
                     ChoiceChip(
-                      label: const Text('Clubs'),
-                      selected: _selectedCategory == 'club',
-                      onSelected: (_) => setState(() => _selectedCategory = 'club'),
+                      label: const Text('Skills & Tech'),
+                      selected: _selectedCategory == 'interest_skill',
+                      onSelected: (_) => setState(() => _selectedCategory = 'interest_skill'),
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: const Text('Announcements'),
+                      selected: _selectedCategory == 'official_announcements',
+                      onSelected: (_) => setState(() => _selectedCategory = 'official_announcements'),
                     ),
                   ],
                 ),
@@ -168,7 +343,7 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
 
               // Channel Cards List
               Expanded(
-                child: admin.isLoading && allRooms.isEmpty
+                child: chat.isLoadingRooms && allRooms.isEmpty
                     ? const Center(child: CircularProgressIndicator())
                     : filteredRooms.isEmpty
                         ? Center(
@@ -189,7 +364,7 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Try clearing your search or category filter.',
+                                  'Tap "New Lounge" below to request a study group.',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                   ),

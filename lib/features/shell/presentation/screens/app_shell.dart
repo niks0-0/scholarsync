@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -41,9 +40,9 @@ class AppShell extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      extendBody: true, // content flows under floating dock
+      extendBody: false, // ensures body ends cleanly above the bottom navigation bar
       body: navigationShell,
-      bottomNavigationBar: _FloatingGlassDock(
+      bottomNavigationBar: _DockedBottomBar(
         currentIndex: navigationShell.currentIndex,
         onTap: _onTap,
       ),
@@ -51,10 +50,10 @@ class AppShell extends StatelessWidget {
   }
 }
 
-// ── Floating Glass Dock (Phone) ───────────────────────────────────────────────
+// ── Docked AMOLED Luxury Bottom Bar (Phone) ──────────────────────────────────
 
-class _FloatingGlassDock extends StatelessWidget {
-  const _FloatingGlassDock({
+class _DockedBottomBar extends StatelessWidget {
+  const _DockedBottomBar({
     required this.currentIndex,
     required this.onTap,
   });
@@ -73,51 +72,44 @@ class _FloatingGlassDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bottom = MediaQuery.paddingOf(context).bottom;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, (bottom + 10).clamp(14.0, 36.0)),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            height: 64,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF0C0C0E).withValues(alpha: 0.85)
-                  : Colors.white.withValues(alpha: 0.88),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: isDark
-                    ? AppColors.primary.withValues(alpha: 0.18)
-                    : AppColors.border.withValues(alpha: 0.6),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: isDark
-                      ? AppColors.primary.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 24,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(_items.length, (i) {
-                final item = _items[i];
-                final isSelected = currentIndex == i;
-                return _DockButton(
-                  item: item,
-                  isSelected: isSelected,
-                  isDark: isDark,
-                  onTap: () => onTap(i),
-                );
-              }),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0C0C0E) : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: isDark
+                ? AppColors.primary.withValues(alpha: 0.15)
+                : AppColors.border.withValues(alpha: 0.7),
+            width: 1,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.45)
+                : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(_items.length, (i) {
+              final item = _items[i];
+              final isSelected = currentIndex == i;
+              return _DockButton(
+                item: item,
+                isSelected: isSelected,
+                isDark: isDark,
+                onTap: () => onTap(i),
+              );
+            }),
           ),
         ),
       ),

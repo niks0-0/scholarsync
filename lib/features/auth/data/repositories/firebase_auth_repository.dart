@@ -45,6 +45,12 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<void> sendEmailVerification() => _service.sendEmailVerification();
 
   @override
+  Future<AuthUser?> reloadUser() async {
+    await _service.reloadUser();
+    return _service.currentUser;
+  }
+
+  @override
   Future<String?> getIdToken({bool forceRefresh = false}) =>
       _service.getIdToken(forceRefresh: forceRefresh);
 

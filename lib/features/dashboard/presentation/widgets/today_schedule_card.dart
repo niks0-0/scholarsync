@@ -39,21 +39,29 @@ class TodayScheduleCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.schedule_rounded, color: AppColors.primary, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      "Today's Classes",
-                      style: textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurface,
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.schedule_rounded, color: AppColors.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          "Today's Classes",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.chevron_right_rounded, size: 18, color: colorScheme.onSurfaceVariant),
-                  ],
+                      const SizedBox(width: 4),
+                      Icon(Icons.chevron_right_rounded, size: 18, color: colorScheme.onSurfaceVariant),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(

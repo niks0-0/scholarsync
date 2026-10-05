@@ -119,13 +119,18 @@ class _LegalVerificationStepState extends State<LegalVerificationStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Legal Undertaking & Verification',
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Legal Undertaking & Verification',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.required),
             ],
           ),
@@ -172,11 +177,15 @@ class _LegalVerificationStepState extends State<LegalVerificationStep> {
             children: [
               const Icon(Icons.badge_outlined, size: 20, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text(
-                'Student Status Verification (v1.0)',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Student Status Verification (v1.0)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
             ],
@@ -189,7 +198,7 @@ class _LegalVerificationStepState extends State<LegalVerificationStep> {
 
           const SizedBox(height: AppDimensions.spacingMd),
 
-          // ── Dual-Method Tabs Switcher ────────────────────────────────────
+          // ── Multi-Method Tabs Switcher ────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -219,22 +228,26 @@ class _LegalVerificationStepState extends State<LegalVerificationStep> {
                         children: [
                           Icon(
                             Icons.credit_card_rounded,
-                            size: 16,
+                            size: 15,
                             color: onboarding.verificationMethod == 'college_id'
                                 ? AppColors.primary
                                 : Colors.white60,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'College ID Card',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: onboarding.verificationMethod == 'college_id'
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              color: onboarding.verificationMethod == 'college_id'
-                                  ? Colors.white
-                                  : Colors.white60,
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'ID Card',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: onboarding.verificationMethod == 'college_id'
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: onboarding.verificationMethod == 'college_id'
+                                    ? Colors.white
+                                    : Colors.white60,
+                              ),
                             ),
                           ),
                         ],
@@ -262,22 +275,73 @@ class _LegalVerificationStepState extends State<LegalVerificationStep> {
                         children: [
                           Icon(
                             Icons.mark_email_read_rounded,
-                            size: 16,
+                            size: 15,
                             color: onboarding.verificationMethod == 'college_email'
                                 ? AppColors.secondary
                                 : Colors.white60,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'College Email OTP',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: onboarding.verificationMethod == 'college_email'
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              color: onboarding.verificationMethod == 'college_email'
-                                  ? Colors.white
-                                  : Colors.white60,
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Email OTP',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: onboarding.verificationMethod == 'college_email'
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: onboarding.verificationMethod == 'college_email'
+                                    ? Colors.white
+                                    : Colors.white60,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => onboarding.setVerificationMethod('verify_later'),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: onboarding.verificationMethod == 'verify_later'
+                            ? const Color(0xFF27272A)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                        border: onboarding.verificationMethod == 'verify_later'
+                            ? Border.all(color: AppColors.success.withValues(alpha: 0.6))
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.bolt_rounded,
+                            size: 15,
+                            color: onboarding.verificationMethod == 'verify_later'
+                                ? AppColors.success
+                                : Colors.white60,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Verify Later',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: onboarding.verificationMethod == 'verify_later'
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: onboarding.verificationMethod == 'verify_later'
+                                    ? Colors.white
+                                    : Colors.white60,
+                              ),
                             ),
                           ),
                         ],
@@ -294,8 +358,40 @@ class _LegalVerificationStepState extends State<LegalVerificationStep> {
           // ── Method Content ──────────────────────────────────────────────
           if (onboarding.verificationMethod == 'college_id') ...[
             _buildCollegeIdUploadSection(context, onboarding),
-          ] else ...[
+          ] else if (onboarding.verificationMethod == 'college_email') ...[
             _buildCollegeEmailOtpSection(context, onboarding),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(AppDimensions.spacingLg),
+              decoration: BoxDecoration(
+                color: const Color(0xFF141418),
+                borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.check_circle_outline_rounded, color: AppColors.success, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Instant Workspace Access',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'You can explore and use your timetable, attendance calculator, and academic syllabus immediately with self-attestation. Official student ID verification can be completed anytime from your Profile.',
+                          style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
 
           // ── Error Banner ────────────────────────────────────────────────
@@ -462,9 +558,13 @@ class _LegalVerificationStepState extends State<LegalVerificationStep> {
                 child: const Icon(Icons.document_scanner_rounded, color: AppColors.primary, size: 16),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Upload Student ID Card Photo',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+              const Expanded(
+                child: Text(
+                  'Upload Student ID Card Photo',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -592,9 +692,13 @@ class _LegalVerificationStepState extends State<LegalVerificationStep> {
                 child: const Icon(Icons.verified_rounded, color: AppColors.secondary, size: 16),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Institutional Email Instant Verification',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+              const Expanded(
+                child: Text(
+                  'Institutional Email Instant Verification',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -673,7 +777,10 @@ class _LegalVerificationStepState extends State<LegalVerificationStep> {
               onPressed: () {
                 onboarding.verifyOtp(_otpController.text);
               },
-              child: const Text('Verify OTP & Unlock Full Access', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('Verify OTP & Unlock Full Access', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
             ),
           ],
 

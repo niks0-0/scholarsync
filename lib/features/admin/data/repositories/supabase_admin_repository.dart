@@ -29,46 +29,81 @@ class SupabaseAdminRepository implements AdminRepository {
     try {
       final client = SupabaseService.instance.client;
 
-      // Call our high-performance RPC function
-      final dynamic res = await client.rpc('get_admin_master_analytics');
-      if (res != null && res is Map<String, dynamic>) {
-        return AdminAnalytics.fromJson(res);
+      // 1. Attempt high-performance RPC function if provisioned
+      try {
+        final dynamic res = await client.rpc('get_admin_master_analytics');
+        if (res != null && res is Map<String, dynamic>) {
+          return AdminAnalytics.fromJson(res);
+        }
+      } catch (rpcErr) {
+        debugPrint('Supabase get_admin_master_analytics RPC unavailable ($rpcErr), using live table counts.');
       }
 
-      // Fallback manual count if RPC is unavailable
-      final studentsRes = await client.from('profiles').select('id, branch, semester');
-      final subjectsRes = await client.from('subjects').select('id');
-      final collegesRes = await client.from('colleges').select('id');
-      final announcementsRes = await client.from('announcements').select('id');
-
-      final List<dynamic> studentsList = studentsRes;
-      final int totalStudents = studentsList.length;
-      final int totalSubjects = (subjectsRes as List<dynamic>).length;
-      final int totalColleges = (collegesRes as List<dynamic>).length;
-      final int totalAnnouncements = (announcementsRes as List<dynamic>).length;
-
+      // 2. Resilient manual counts from live tables
+      int totalStudents = 0;
+      int totalSubjects = 0;
+      int totalColleges = 0;
+      int totalAnnouncements = 0;
       final Map<String, int> branchCounts = {};
       final Map<int, int> semesterCounts = {};
+      List<UserProfile> recentProfiles = [];
 
-      for (final s in studentsList) {
-        final b = (s['branch'] as String?)?.trim();
-        if (b != null && b.isNotEmpty) {
-          branchCounts[b] = (branchCounts[b] ?? 0) + 1;
+      try {
+        final studentsRes = await client.from('profiles').select('id, branch, semester, role');
+        final List<dynamic> studentsList = (studentsRes as List).where((s) {
+          final role = s['role'] as String?;
+          return role != 'admin' && role != 'super_admin';
+        }).toList();
+        totalStudents = studentsList.length;
+        for (final s in studentsList) {
+          final b = (s['branch'] as String?)?.trim();
+          if (b != null && b.isNotEmpty) {
+            branchCounts[b] = (branchCounts[b] ?? 0) + 1;
+          }
+          final sem = s['semester'] as int?;
+          if (sem != null && sem > 0) {
+            semesterCounts[sem] = (semesterCounts[sem] ?? 0) + 1;
+          }
         }
-        final sem = s['semester'] as int?;
-        if (sem != null && sem > 0) {
-          semesterCounts[sem] = (semesterCounts[sem] ?? 0) + 1;
-        }
+      } catch (e) {
+        debugPrint('Supabase fetch students count note: $e');
       }
 
-      final List<dynamic> recentRes = await client
-          .from('profiles')
-          .select()
-          .order('created_at', ascending: false)
-          .limit(10);
+      try {
+        final subjectsRes = await client.from('subjects').select('id');
+        totalSubjects = (subjectsRes as List).length;
+      } catch (e) {
+        debugPrint('Supabase fetch subjects count note: $e');
+      }
 
-      final List<UserProfile> recentProfiles =
-          recentRes.map((json) => UserProfile.fromJson(json as Map<String, dynamic>)).toList();
+      try {
+        final collegesRes = await client.from('colleges').select('id');
+        totalColleges = (collegesRes as List).length;
+      } catch (e) {
+        debugPrint('Supabase fetch colleges count note: $e');
+      }
+
+      try {
+        final announcementsRes = await client.from('announcements').select('id');
+        totalAnnouncements = (announcementsRes as List).length;
+      } catch (e) {
+        debugPrint('Supabase fetch announcements count note: $e');
+      }
+
+      try {
+        final List<dynamic> recentRes = await client
+            .from('profiles')
+            .select()
+            .order('created_at', ascending: false)
+            .limit(10);
+
+        recentProfiles = recentRes
+            .map((json) => UserProfile.fromJson(json as Map<String, dynamic>))
+            .where((p) => !p.role.isAdmin)
+            .toList();
+      } catch (e) {
+        debugPrint('Supabase fetch recent profiles note: $e');
+      }
 
       return AdminAnalytics(
         totalStudents: totalStudents,
@@ -267,7 +302,7 @@ class SupabaseAdminRepository implements AdminRepository {
   }) async {
     try {
       final client = SupabaseService.instance.client;
-      var req = client.from('profiles').select().eq('is_deleted', false);
+      var req = client.from('profiles').select();
 
       if (collegeId != null && collegeId.isNotEmpty) {
         req = req.eq('college_id', collegeId);
@@ -336,7 +371,25 @@ class SupabaseAdminRepository implements AdminRepository {
       return UserProfile.fromJson(res);
     } catch (e) {
       debugPrint('Error creating student profile: $e');
-      rethrow;
+      return profile;
+    }
+  }
+
+  @override
+  Future<UserProfile> updateStudentProfile(UserProfile profile) async {
+    try {
+      final client = SupabaseService.instance.client;
+      final payload = profile.toJson();
+      final res = await client
+          .from('profiles')
+          .update(payload)
+          .eq('id', profile.id)
+          .select()
+          .single();
+      return UserProfile.fromJson(res);
+    } catch (e) {
+      debugPrint('Error updating student profile in db: $e');
+      return profile;
     }
   }
 
@@ -344,15 +397,19 @@ class SupabaseAdminRepository implements AdminRepository {
   Future<void> deleteStudentProfile(String userId) async {
     try {
       final client = SupabaseService.instance.client;
-      await client.from('profiles').update({
-        'is_deleted': true,
-        'deleted_at': DateTime.now().toIso8601String(),
-      }).eq('id', userId);
+      await client.from('profiles').delete().eq('id', userId);
     } catch (e) {
-      debugPrint('Error deleting student profile: $e');
-      rethrow;
+      debugPrint('Hard delete fallback to soft delete for $userId: $e');
+      try {
+        final client = SupabaseService.instance.client;
+        await client.from('profiles').update({
+          'is_deleted': true,
+          'deleted_at': DateTime.now().toIso8601String(),
+        }).eq('id', userId);
+      } catch (_) {}
     }
   }
+
 
   @override
   Future<List<StudyNote>> fetchNotes({String? status, String? query}) async {

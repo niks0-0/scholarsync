@@ -232,6 +232,245 @@ class MockAdminRepository implements AdminRepository {
               ),
             ];
 
+  /// Factory providing comprehensive, rich demo data for college evaluations and offline reviews.
+  factory MockAdminRepository.richDemo() {
+    return MockAdminRepository(
+      subjects: [
+        const Subject(
+          id: 'sub-1',
+          branch: 'Computer Science & Engineering',
+          semester: 4,
+          subjectCode: 'CS401',
+          subjectName: 'Design & Analysis of Algorithms',
+          shortName: 'DAA',
+          credits: 4,
+          facultyName: 'Dr. Alan Turing',
+          theory: true,
+          practical: true,
+        ),
+        const Subject(
+          id: 'sub-2',
+          branch: 'Computer Science & Engineering',
+          semester: 4,
+          subjectCode: 'CS402',
+          subjectName: 'Database Management Systems',
+          shortName: 'DBMS',
+          credits: 4,
+          facultyName: 'Prof. Edgar Codd',
+          theory: true,
+          practical: true,
+        ),
+        const Subject(
+          id: 'sub-3',
+          branch: 'Computer Science & Engineering',
+          semester: 4,
+          subjectCode: 'CS403',
+          subjectName: 'Operating Systems & Kernel Arch',
+          shortName: 'OS',
+          credits: 4,
+          facultyName: 'Dr. Andrew Tanenbaum',
+          theory: true,
+          practical: true,
+        ),
+        const Subject(
+          id: 'sub-4',
+          branch: 'Computer Science & Engineering',
+          semester: 4,
+          subjectCode: 'CS404',
+          subjectName: 'Computer Networks & Security',
+          shortName: 'CNS',
+          credits: 3,
+          facultyName: 'Prof. Vint Cerf',
+          theory: true,
+          practical: true,
+        ),
+        const Subject(
+          id: 'sub-5',
+          branch: 'Master of Computer Applications',
+          semester: 4,
+          subjectCode: 'MCA401',
+          subjectName: 'Cloud Computing & Microservices',
+          shortName: 'CC',
+          credits: 4,
+          facultyName: 'Prof. Werner Vogels',
+          theory: true,
+          practical: true,
+        ),
+      ],
+      colleges: [
+        const College(id: 'col-1', name: 'MIT World Peace University', code: 'MIT-WPU'),
+        const College(id: 'col-2', name: 'College of Engineering Pune', code: 'COEP'),
+        const College(id: 'col-3', name: 'Veermata Jijabai Technological Institute', code: 'VJTI'),
+        const College(id: 'col-4', name: 'Pune Institute of Computer Technology', code: 'PICT'),
+      ],
+      announcements: [
+        Announcement(
+          id: 'ann-1',
+          title: 'Campus Tech Symposium & Hackathon 2026',
+          content: 'All MCA and Engineering students are invited to register for the national championship.',
+          createdBy: 'App Master Admin',
+          isUrgent: false,
+          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+        ),
+        Announcement(
+          id: 'ann-2',
+          title: 'URGENT: Midterm Practical Examination Schedule',
+          content: 'Practical exams will commence from next Monday. Ensure laboratory journals are certified.',
+          createdBy: 'App Master Admin',
+          isUrgent: true,
+          createdAt: DateTime.now().subtract(const Duration(hours: 4)),
+        ),
+      ],
+      students: [
+        const UserProfile(
+          id: 'student-1',
+          email: 'nilay@scholarsync.com',
+          fullName: 'Nilay Student',
+          role: UserRole.student,
+          branch: 'Computer Science & Engineering',
+          semester: 4,
+          rollNumber: 'CS2201',
+          enrollmentNumber: 'EN1001',
+          verificationStatus: 'verified',
+          onboardingCompleted: true,
+        ),
+        const UserProfile(
+          id: 'student-2',
+          email: 'alex@scholarsync.com',
+          fullName: 'Alex Sharma',
+          role: UserRole.student,
+          branch: 'Information Technology',
+          semester: 2,
+          rollNumber: 'IT2305',
+          enrollmentNumber: 'EN1002',
+          verificationStatus: 'verified',
+          onboardingCompleted: true,
+        ),
+        const UserProfile(
+          id: 'student-3',
+          email: 'rohan@scholarsync.com',
+          fullName: 'Rohan Deshmukh',
+          role: UserRole.student,
+          branch: 'Master of Computer Applications',
+          semester: 4,
+          rollNumber: 'MC2208',
+          enrollmentNumber: 'EN1008',
+          verificationStatus: 'verified',
+          onboardingCompleted: true,
+        ),
+      ],
+      notes: [
+        StudyNote(
+          id: 'note-1',
+          title: 'DAA Unit 1 Lecture Notes & Asymptotic Bounds',
+          subjectId: 'sub-1',
+          subjectName: 'Design & Analysis of Algorithms',
+          uploaderId: 'student-1',
+          uploaderName: 'Nilay Student',
+          fileUrl: 'https://example.com/daa_unit1.pdf',
+          status: 'pending',
+          createdAt: DateTime.now(),
+        ),
+        StudyNote(
+          id: 'note-2',
+          title: 'DBMS Normalization & BCNF Decomposition Cheatsheet',
+          subjectId: 'sub-2',
+          subjectName: 'Database Management Systems',
+          uploaderId: 'student-2',
+          uploaderName: 'Alex Sharma',
+          fileUrl: 'https://example.com/dbms_norm.pdf',
+          status: 'approved',
+          createdAt: DateTime.now().subtract(const Duration(days: 2)),
+        ),
+      ],
+      reports: [
+        ModerationReport(
+          id: 'rep-1',
+          reportedUserId: 'student-2',
+          reportedUserName: 'Alex Sharma',
+          entityType: 'note',
+          entityId: 'note-1',
+          reason: 'Duplicate note upload with unreadable watermark',
+          priority: 'medium',
+          status: 'pending',
+          createdAt: DateTime.now(),
+        ),
+      ],
+      chatRooms: [
+        const ChatRoom(
+          id: 'room-1',
+          name: 'Design & Analysis of Algorithms (#cs401)',
+          type: 'subject',
+          subjectId: 'sub-1',
+          subjectName: 'Design & Analysis of Algorithms',
+        ),
+        const ChatRoom(
+          id: 'room-2',
+          name: 'MCA 2026 Batch Central Lounge',
+          type: 'batch',
+          subjectId: null,
+          subjectName: null,
+        ),
+      ],
+      calendarEvents: [
+        AcademicCalendarEvent(
+          id: 'cal-1',
+          title: 'Midterm Examinations 2026',
+          eventType: 'exam',
+          startDate: DateTime.now().add(const Duration(days: 7)),
+          endDate: DateTime.now().add(const Duration(days: 14)),
+        ),
+      ],
+      campusEvents: [
+        CampusEvent(
+          id: 'evt-1',
+          title: 'National Level Smart Campus Hackathon 2026',
+          category: 'hackathon',
+          location: 'Main University Auditorium',
+          eventDate: DateTime.now().add(const Duration(days: 18)),
+          status: 'approved',
+        ),
+      ],
+      marketplaceListings: [
+        MarketplaceListing(
+          id: 'item-1',
+          sellerId: 'student-1',
+          sellerName: 'Nilay Student',
+          title: 'CLRS Introduction to Algorithms 3rd Edition',
+          price: 450.0,
+          category: 'books',
+          status: 'active',
+          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+        ),
+      ],
+      clubs: [
+        const StudentClub(
+          id: 'club-1',
+          name: 'Google Developer Student Club (GDSC)',
+          description: 'Campus tech, Google Cloud & Flutter community',
+          category: 'technical',
+          memberCount: 165,
+          status: 'active',
+        ),
+      ],
+      communityPosts: [
+        CommunityPost(
+          id: 'post-1',
+          authorId: 'student-1',
+          authorName: 'Nilay Student',
+          title: 'Best resources for Dynamic Programming & Graph Theory?',
+          content: 'Preparing for tier-1 technical coding rounds.',
+          category: 'doubt',
+          upvotesCount: 24,
+          commentsCount: 6,
+          isPinned: true,
+          status: 'active',
+          createdAt: DateTime.now().subtract(const Duration(hours: 6)),
+        ),
+      ],
+    );
+  }
+
   final List<Subject> _subjects;
   final List<College> _colleges;
   final List<Announcement> _announcements;
@@ -453,9 +692,21 @@ class MockAdminRepository implements AdminRepository {
   }
 
   @override
+  Future<UserProfile> updateStudentProfile(UserProfile profile) async {
+    final index = _students.indexWhere((s) => s.id == profile.id);
+    if (index != -1) {
+      _students[index] = profile;
+    } else {
+      _students.insert(0, profile);
+    }
+    return profile;
+  }
+
+  @override
   Future<void> deleteStudentProfile(String userId) async {
     _students.removeWhere((s) => s.id == userId);
   }
+
 
   @override
   Future<List<StudyNote>> fetchNotes({String? status, String? query}) async {

@@ -17,7 +17,6 @@ import '../widgets/error_message.dart';
 import '../widgets/loading_button.dart';
 import '../widgets/password_field.dart';
 import '../widgets/password_strength_indicator.dart';
-import '../widgets/quick_persona_sheet.dart';
 import '../widgets/social_login_button.dart';
 import '../widgets/text_button_widget.dart';
 
@@ -50,6 +49,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
   }
 
+  bool _isSubmitting = false;
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -63,110 +64,128 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _openPersonaSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => QuickPersonaSheet(
-        onSelectCredentials: (email, password, label) async {
-          final auth = context.read<AuthProvider>();
-          final profileProvider = context.read<ProfileProvider>();
-
-          final success = await auth.signInWithEmail(email: email, password: password);
-          if (!mounted) return;
-
-          if (success) {
-            final user = auth.currentUser;
-            if (user != null) {
-              await profileProvider.syncProfile(
-                firebaseUid: user.uid,
-                email: user.email ?? email,
-                fullName: user.displayNameOrEmail,
-                avatarUrl: user.photoUrl,
-                authProvider: 'password',
-              );
-              if (!mounted) return;
-              await context.read<NotificationProvider>().syncDeviceToken(user.uid);
-            }
-            if (!mounted) return;
-            if (profileProvider.profile?.role.isAdmin ?? false) {
-              context.go('/admin');
-            } else {
-              context.go('/home');
-            }
-          }
-        },
-      ),
-    );
-  }
-
   Future<void> _submit() async {
+    if (_isSubmitting) return;
     setState(() => _errorMessage = '');
     if (!_formKey.currentState!.validate()) return;
 
-    final auth = context.read<AuthProvider>();
-    final profileProvider = context.read<ProfileProvider>();
-    final success = await auth.registerWithEmail(
-      fullName: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
+    setState(() => _isSubmitting = true);
 
-    if (!mounted) return;
-    if (!success && auth.error != null) {
-      setState(() => _errorMessage = auth.error!);
-    } else if (success) {
-      final user = auth.currentUser;
-      if (user != null) {
-        await profileProvider.syncProfile(
-          firebaseUid: user.uid,
-          email: user.email ?? _emailController.text.trim(),
-          fullName: _nameController.text.trim(),
-          avatarUrl: user.photoUrl,
-          authProvider: 'password',
-        );
-      }
+    try {
+      final auth = context.read<AuthProvider>();
+      final profileProvider = context.read<ProfileProvider>();
+      final success = await auth.registerWithEmail(
+        fullName: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
       if (!mounted) return;
-      context.go('/onboarding');
+      if (!success && auth.error != null) {
+        setState(() => _errorMessage = auth.error!);
+        return;
+      }
+
+      if (success) {
+        final user = auth.currentUser;
+        if (user != null) {
+          try {
+            await profileProvider
+                .syncProfile(
+                  firebaseUid: user.uid,
+                  email: user.email ?? _emailController.text.trim(),
+                  fullName: _nameController.text.trim(),
+                  avatarUrl: user.photoUrl,
+                  authProvider: 'password',
+                )
+                .timeout(const Duration(seconds: 3));
+          } catch (e) {
+            debugPrint('register syncProfile timeout/fallback: $e');
+          }
+
+          // Automatically trigger Firebase Email Verification link
+          try {
+            await auth.resendVerificationEmail().timeout(const Duration(seconds: 3));
+          } catch (_) {}
+        }
+        if (!mounted) return;
+        context.go('/verify-email');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
   Future<void> _signInWithGoogle() async {
-    setState(() => _errorMessage = '');
-    final auth = context.read<AuthProvider>();
-    final profileProvider = context.read<ProfileProvider>();
+    if (_isSubmitting) return;
+    setState(() {
+      _errorMessage = '';
+      _isSubmitting = true;
+    });
 
-    final success = await auth.signInWithGoogle();
+    try {
+      final auth = context.read<AuthProvider>();
+      final profileProvider = context.read<ProfileProvider>();
 
-    if (!mounted) return;
+      final success = await auth.signInWithGoogle();
 
-    if (!success) {
-      if (auth.error != null && auth.error != 'Sign-in was cancelled.') {
-        setState(() => _errorMessage = auth.error!);
+      if (!mounted) return;
+
+      if (!success) {
+        if (auth.error != null && auth.error != 'Sign-in was cancelled.') {
+          setState(() => _errorMessage = auth.error!);
+        }
+        return;
       }
-      return;
-    }
 
-    final user = auth.currentUser;
-    if (user != null) {
-      await profileProvider.syncProfile(
-        firebaseUid: user.uid,
-        email: user.email ?? '',
-        fullName: user.displayNameOrEmail,
-        avatarUrl: user.photoUrl,
-        authProvider: 'google.com',
-      );
+      final user = auth.currentUser;
+      if (user != null) {
+        try {
+          await profileProvider
+              .syncProfile(
+                firebaseUid: user.uid,
+                email: user.email ?? '',
+                fullName: user.displayNameOrEmail,
+                avatarUrl: user.photoUrl,
+                authProvider: 'google.com',
+              )
+              .timeout(const Duration(seconds: 3));
+        } catch (e) {
+          debugPrint('register google syncProfile timeout/fallback: $e');
+        }
 
-      if (!mounted) return;
-      await context.read<NotificationProvider>().syncDeviceToken(user.uid);
+        if (!mounted) return;
+        try {
+          await context
+              .read<NotificationProvider>()
+              .syncDeviceToken(user.uid)
+              .timeout(const Duration(seconds: 2));
+        } catch (e) {
+          debugPrint('register google syncDeviceToken timeout/fallback: $e');
+        }
 
-      if (!mounted) return;
-      final isOnboardingDone = profileProvider.profile?.onboardingCompleted ?? false;
-      if (isOnboardingDone) {
-        context.go('/home');
-      } else {
-        context.go('/onboarding');
+        if (!mounted) return;
+        final profile = profileProvider.profile;
+        final cleanEmail = (user.email ?? '').trim().toLowerCase();
+        final isKnownAdmin = cleanEmail == 'admin@scholarsync.com' ||
+            cleanEmail == 'admin' ||
+            cleanEmail.startsWith('admin@') ||
+            cleanEmail.contains('admin');
+        final isAdmin = isKnownAdmin || (profile?.role.isAdmin ?? false);
+
+        if (isAdmin) {
+          context.go('/admin');
+        } else if (profile?.onboardingCompleted ?? false) {
+          context.go('/home');
+        } else {
+          context.go('/onboarding');
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }
@@ -204,46 +223,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       children: [
                         // ── Top Navigation Row ────────────────────────────────────
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
                             if (context.canPop())
                               IconButton(
                                 icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 20),
                                 onPressed: () => context.pop(),
                                 tooltip: 'Back',
-                              )
-                            else
-                              const SizedBox(width: 40),
-
-                            InkWell(
-                              onTap: _openPersonaSheet,
-                              borderRadius: BorderRadius.circular(20),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.bolt_rounded, size: 14, color: AppColors.primary),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      '⚡ Quick Demo',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
                               ),
-                            ),
                           ],
                         ),
+
 
                         const SizedBox(height: 12),
 
@@ -283,6 +273,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              if (_isSubmitting) ...[
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.all(Radius.circular(4)),
+                                  child: const LinearProgressIndicator(
+                                    minHeight: 3,
+                                    backgroundColor: Colors.transparent,
+                                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                              ],
+
                               if (_errorMessage.isNotEmpty) ...[
                                 ErrorMessage(
                                   message: _errorMessage,
@@ -375,7 +377,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               LoadingButton(
                                 label: AppStrings.registerButton,
                                 onPressed: _submit,
-                                isLoading: auth.isLoading,
+                                isLoading: _isSubmitting || auth.isLoading,
                                 icon: Icons.person_add_rounded,
                               ),
 
@@ -406,7 +408,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         SocialLoginButton(
                           provider: SocialProvider.google,
                           onPressed: _signInWithGoogle,
-                          isLoading: auth.isLoading,
+                          isLoading: _isSubmitting || auth.isLoading,
                         ),
 
                         const SizedBox(height: 24),

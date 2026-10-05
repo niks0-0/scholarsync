@@ -118,11 +118,12 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _openCreateClubDialog(context),
         backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.groups_rounded, color: Colors.black),
-        label: const Text('New Club', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        foregroundColor: Colors.black,
+        tooltip: 'New Club',
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

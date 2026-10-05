@@ -179,7 +179,7 @@ class AssignmentsSummaryCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        assignment.priority.name.toUpperCase(),
+                        assignment.priority.displayName,
                         style: textTheme.labelSmall?.copyWith(
                           color: priorityColor,
                           fontWeight: FontWeight.bold,

@@ -15,9 +15,10 @@ abstract final class AppRoutes {
   static const String profile = '/profile';
   static const String notifications = '/notifications';
   static const String search = '/search';
-  static const String timetable = '/timetable';
-  static const String attendance = '/attendance';
-  static const String leaderboard = '/leaderboard';
+  // Sub-routes inside the home shell branch (URL updates properly on web)
+  static const String timetable = '/home/timetable';
+  static const String attendance = '/home/attendance';
+  static const String leaderboard = '/home/leaderboard';
   static const String designPreview = '/design-preview';
   static const String admin = '/admin';
 }

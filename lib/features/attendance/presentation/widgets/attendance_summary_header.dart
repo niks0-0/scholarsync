@@ -22,7 +22,8 @@ class AttendanceSummaryHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final isSafe = overallPercentage >= 75.0;
+    final safePercentage = (overallPercentage.isNaN || overallPercentage.isInfinite) ? 100.0 : overallPercentage;
+    final isSafe = safePercentage >= 75.0;
     final statusColor = isSafe ? const Color(0xFF10B981) : const Color(0xFFEF4444);
 
     return Container(
@@ -59,9 +60,9 @@ class AttendanceSummaryHeader extends StatelessWidget {
                       width: 80,
                       height: 80,
                       child: CircularProgressIndicator(
-                        value: (overallPercentage / 100.0).clamp(0.0, 1.0),
+                        value: (safePercentage / 100.0).clamp(0.0, 1.0),
                         strokeWidth: 8,
-                        strokeCap: StrokeCap.round,
+                        strokeCap: safePercentage >= 99.5 ? StrokeCap.butt : StrokeCap.round,
                         backgroundColor: isDark
                             ? const Color(0xFF27272A)
                             : const Color(0xFFE2E8F0),
@@ -72,7 +73,7 @@ class AttendanceSummaryHeader extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          '${overallPercentage.toStringAsFixed(1)}%',
+                          '${safePercentage.toStringAsFixed(1)}%',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.5,
@@ -93,13 +94,18 @@ class AttendanceSummaryHeader extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          isSafe ? 'Attendance Satisfied' : 'Attendance At Risk',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: statusColor,
+                        Expanded(
+                          child: Text(
+                            isSafe ? 'Attendance Satisfied' : 'Attendance At Risk',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: statusColor,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 6),
                         InkWell(
                           onTap: onOpenCalculator,
                           borderRadius: BorderRadius.circular(12),
@@ -141,19 +147,23 @@ class AttendanceSummaryHeader extends StatelessWidget {
                     // Metrics pills
                     Row(
                       children: [
-                        _buildStatPill(
-                          context,
-                          label: 'Attended',
-                          value: '$totalAttended/$totalClasses',
-                          isDark: isDark,
+                        Flexible(
+                          child: _buildStatPill(
+                            context,
+                            label: 'Attended',
+                            value: '$totalAttended/$totalClasses',
+                            isDark: isDark,
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        _buildStatPill(
-                          context,
-                          label: 'At Risk',
-                          value: '$atRiskCount subjects',
-                          isAlert: atRiskCount > 0,
-                          isDark: isDark,
+                        Flexible(
+                          child: _buildStatPill(
+                            context,
+                            label: 'At Risk',
+                            value: '$atRiskCount subjects',
+                            isAlert: atRiskCount > 0,
+                            isDark: isDark,
+                          ),
                         ),
                       ],
                     ),

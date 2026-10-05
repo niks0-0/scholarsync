@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_dimensions.dart';
@@ -9,6 +11,8 @@ import '../../../admin/domain/models/chat_message.dart';
 import '../../../admin/presentation/admin_provider.dart';
 import '../../../auth/auth_provider.dart';
 import '../../../profile/presentation/profile_provider.dart';
+import 'package:scholarsync/features/resources/presentation/resources_provider.dart';
+import '../chat_provider.dart';
 
 /// Production-Grade Student & Faculty Academic Chat Room with Safe-Lock, Anti-Spam & Reaction Engine.
 class ChatRoomScreen extends StatefulWidget {
@@ -28,13 +32,74 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final ScrollController _scrollController = ScrollController();
   ChatMessage? _replyingTo;
   bool _isSending = false;
+  bool _isUploadingAttachment = false;
   DateTime? _lastSendTime;
+
+  Future<void> _pickAndUploadAttachment() async {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+      if (pickedFile == null) return;
+
+      setState(() => _isUploadingAttachment = true);
+      final file = File(pickedFile.path);
+      final fileName = pickedFile.name;
+      final subjectId = widget.room.subjectId ?? 'general';
+
+      final resourcesProvider = context.read<ResourcesProvider>();
+      final signedUrl = await resourcesProvider.uploadDocument(
+        file: file,
+        fileName: fileName,
+        subjectId: subjectId,
+      );
+
+      if (signedUrl != null) {
+        final clientMsgId = UuidHelper.generateV4();
+        await context.read<ChatProvider>().sendMessage(
+              clientAssignedId: clientMsgId,
+              senderId: user.uid,
+              content: '📎 [Attachment: $fileName]($signedUrl)',
+            );
+        _scrollToBottom();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to upload attachment. Please try again.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload error: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingAttachment = false);
+      }
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AdminProvider>().loadRoomMessages(widget.room.id);
+      final user = context.read<AuthProvider>().currentUser;
+      final uid = user?.uid ?? 'guest_user';
+      context.read<ChatProvider>().enterRoom(widget.room, userId: uid);
     });
   }
 
@@ -42,6 +107,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    context.read<ChatProvider>().leaveCurrentRoom();
     super.dispose();
   }
 
@@ -93,26 +159,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     });
 
     final clientMsgId = UuidHelper.generateV4();
-    final message = ChatMessage(
-      id: '',
-      roomId: widget.room.id,
-      senderId: currentUserId,
-      senderName: currentUserName,
-      senderAvatar: userProfile?.avatarUrl ?? authUser?.photoUrl,
-      content: text,
-      clientMessageId: clientMsgId,
-      replyToId: _replyingTo?.id,
-      createdAt: DateTime.now(),
-    );
-
     _messageController.clear();
     final replyingBackup = _replyingTo;
     setState(() {
       _replyingTo = null;
     });
 
-    final admin = context.read<AdminProvider>();
-    final success = await admin.sendChatMessage(message);
+    final chat = context.read<ChatProvider>();
+    final success = await chat.sendMessage(
+      clientAssignedId: clientMsgId,
+      senderId: currentUserId,
+      content: text,
+      replyToId: replyingBackup?.id,
+    );
 
     if (mounted) {
       setState(() {
@@ -125,8 +184,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           _replyingTo = replyingBackup;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(admin.errorMessage ?? 'Failed to send message. Please check connection.'),
+          const SnackBar(
+            content: Text('Failed to send message. Please check connection.'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -308,13 +367,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final admin = context.watch<AdminProvider>();
+    final chat = context.watch<ChatProvider>();
     final profile = context.watch<ProfileProvider>().profile;
     final authUser = context.watch<AuthProvider>().currentUser;
     final isLocked = widget.room.isLocked;
     final currentUserId = profile?.id ?? authUser?.uid ?? Supabase.instance.client.auth.currentUser?.id;
     final isStudentSuspended = profile?.isSuspended ?? false;
     final isVerified = profile?.isVerified ?? true;
+    final messages = chat.messages;
 
     return Scaffold(
       backgroundColor: const Color(0xFF090A0E),
@@ -354,7 +414,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
             tooltip: 'Refresh Stream',
-            onPressed: () => admin.loadRoomMessages(widget.room.id),
+            onPressed: () {
+              final user = context.read<AuthProvider>().currentUser;
+              final uid = user?.uid ?? 'guest_user';
+              chat.enterRoom(widget.room, userId: uid);
+            },
           ),
         ],
       ),
@@ -432,9 +496,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
           // Message Stream
           Expanded(
-            child: admin.isLoading && admin.activeRoomMessages.isEmpty
+            child: chat.isLoadingMessages && messages.isEmpty
                 ? const Center(child: CircularProgressIndicator())
-                : admin.activeRoomMessages.isEmpty
+                : messages.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -456,9 +520,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     : ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                        itemCount: admin.activeRoomMessages.length,
+                        itemCount: messages.length,
                         itemBuilder: (context, index) {
-                          final msg = admin.activeRoomMessages[index];
+                          final msg = messages[index];
                           final isMe = msg.senderId == currentUserId;
                           final isDeleted = msg.isDeleted;
 
@@ -509,6 +573,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             ),
             child: Row(
               children: [
+                IconButton(
+                  tooltip: 'Share Study Resource',
+                  icon: _isUploadingAttachment
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                        )
+                      : const Icon(Icons.attach_file_rounded, color: Colors.white70),
+                  onPressed: (!isLocked && !isStudentSuspended && isVerified && !_isUploadingAttachment)
+                      ? _pickAndUploadAttachment
+                      : null,
+                ),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
@@ -643,6 +720,33 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (!isDeleted) ...[
+                          GestureDetector(
+                            onTap: () async {
+                              final user = context.read<AuthProvider>().currentUser;
+                              if (user == null) return;
+                              final ok = await context.read<ResourcesProvider>().bookmarkResource(
+                                    userId: user.uid,
+                                    attachmentId: msg.id,
+                                    subjectId: widget.room.subjectId,
+                                  );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(ok
+                                        ? 'Added to your Academic Resources!'
+                                        : 'Failed to bookmark resource.'),
+                                    backgroundColor: ok ? AppColors.success : AppColors.error,
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Tooltip(
+                              message: 'Add to Resources',
+                              child: Icon(Icons.add_circle_outline_rounded, size: 14, color: AppColors.primary),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () => setState(() => _replyingTo = msg),
                             child: Icon(Icons.reply_rounded, size: 12, color: Colors.white.withValues(alpha: 0.4)),

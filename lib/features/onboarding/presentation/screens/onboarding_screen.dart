@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../../auth/auth_provider.dart';
 import '../../../profile/presentation/profile_provider.dart';
 import '../onboarding_provider.dart';
 import '../widgets/onboarding_header.dart';
@@ -35,9 +37,43 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final profile = context.read<ProfileProvider>().profile;
-      context.read<OnboardingProvider>().init(profile);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      final profileProvider = context.read<ProfileProvider>();
+      var profile = profileProvider.profile;
+
+      // Auto-load profile if user is authenticated but in-memory profile hasn't loaded yet
+      if (profile == null && auth.currentUser != null) {
+        profile = await profileProvider.loadProfile(auth.currentUser!.uid);
+      }
+      if (!mounted) return;
+
+      final cleanEmail = auth.currentUser?.email?.toLowerCase().trim() ?? '';
+      final isKnownAdminEmail = cleanEmail == 'admin@scholarsync.com' ||
+          cleanEmail == 'admin' ||
+          cleanEmail.startsWith('admin@') ||
+          cleanEmail.contains('admin');
+      final isAdmin = isKnownAdminEmail || (profile?.role.isAdmin ?? false);
+      if (isAdmin) {
+        context.go('/admin');
+        return;
+      }
+
+      // If user has already completed onboarding, redirect straight to home
+      if (profile?.onboardingCompleted ?? false) {
+        context.go('/home');
+        return;
+      }
+
+      final onboarding = context.read<OnboardingProvider>();
+      onboarding.init(profile);
+      // Google users: already have a profile with authProvider='google.com',
+      // or have a photoUrl set (Google always provides one).
+      final isGoogle = auth.isAuthenticated &&
+          (profile?.authProvider == 'google.com' ||
+              auth.currentUser?.photoUrl != null);
+      onboarding.setIsGoogleUser(isGoogle);
     });
   }
 
@@ -69,6 +105,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final profile = context.watch<ProfileProvider>().profile;
+    final cleanEmail = auth.currentUser?.email?.toLowerCase().trim() ?? '';
+    final isKnownAdminEmail = cleanEmail == 'admin@scholarsync.com' ||
+        cleanEmail == 'admin' ||
+        cleanEmail.startsWith('admin@') ||
+        cleanEmail.contains('admin');
+    final isAdmin = isKnownAdminEmail || (profile?.role.isAdmin ?? false);
+
+    if (isAdmin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/admin');
+      });
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     final colorScheme = Theme.of(context).colorScheme;
     final onboarding = context.watch<OnboardingProvider>();
     final currentStep = onboarding.currentStep;

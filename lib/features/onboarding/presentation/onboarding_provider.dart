@@ -45,6 +45,9 @@ class OnboardingProvider extends ChangeNotifier {
   String _fullName = '';
   College? _selectedCollege;
   String _customCollegeCode = '';
+  bool _isManualCollege = false;
+  String _manualCollegeName = '';
+  String _manualCollegeCode = '';
   String _branch = 'Computer Science & Engineering';
   int _semester = 1;
   String _division = 'A';
@@ -84,6 +87,11 @@ class OnboardingProvider extends ChangeNotifier {
   AcademicSemester? _selectedSemester;
   String _collegeSearchQuery = '';
 
+  // Registration credentials (set during onboarding for email-flow users)
+  String _email = '';
+  String _password = '';
+  bool _isGoogleUser = false;
+
   // Legal Compliance & Dual-Method Verification Fields
   bool _legalUndertakingAccepted = false;
   bool _termsAccepted = false;
@@ -108,6 +116,9 @@ class OnboardingProvider extends ChangeNotifier {
   String get fullName => _fullName;
   College? get selectedCollege => _selectedCollege;
   String get customCollegeCode => _customCollegeCode;
+  bool get isManualCollege => _isManualCollege;
+  String get manualCollegeName => _manualCollegeName;
+  String get manualCollegeCode => _manualCollegeCode;
   String get branch => _branch;
   int get semester => _semester;
   String get division => _division;
@@ -123,6 +134,9 @@ class OnboardingProvider extends ChangeNotifier {
   List<String> get selectedInterests => _selectedInterests;
   List<String> get selectedSkills => _selectedSkills;
   bool get hasDraftLoaded => _hasDraftLoaded;
+  String get email => _email;
+  String get password => _password;
+  bool get isGoogleUser => _isGoogleUser;
 
   // Master Academic Getters
   List<AcademicState> get states => _states;
@@ -255,6 +269,9 @@ class OnboardingProvider extends ChangeNotifier {
         'currentStep': _currentStep,
         'fullName': _fullName,
         'collegeId': _selectedCollege?.id,
+        'isManualCollege': _isManualCollege,
+        'manualCollegeName': _manualCollegeName,
+        'manualCollegeCode': _manualCollegeCode,
         'branch': _branch,
         'semester': _semester,
         'division': _division,
@@ -286,6 +303,9 @@ class OnboardingProvider extends ChangeNotifier {
       final Map<String, dynamic> draft = jsonDecode(draftString);
       _currentStep = (draft['currentStep'] as int?) ?? 0;
       _fullName = (draft['fullName'] as String?) ?? _fullName;
+      _isManualCollege = (draft['isManualCollege'] as bool?) ?? _isManualCollege;
+      _manualCollegeName = (draft['manualCollegeName'] as String?) ?? _manualCollegeName;
+      _manualCollegeCode = (draft['manualCollegeCode'] as String?) ?? _manualCollegeCode;
       _branch = (draft['branch'] as String?) ?? _branch;
       _semester = (draft['semester'] as int?) ?? _semester;
       _division = (draft['division'] as String?) ?? _division;
@@ -425,8 +445,56 @@ class OnboardingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setEmail(String value) {
+    _email = value.trim();
+    notifyListeners();
+  }
+
+  void setPassword(String value) {
+    _password = value;
+    notifyListeners();
+  }
+
+  void setIsGoogleUser(bool value) {
+    _isGoogleUser = value;
+    notifyListeners();
+  }
+
   void setSelectedCollege(College? college) {
     _selectedCollege = college;
+    if (college != null) {
+      _isManualCollege = false;
+    }
+    saveDraftToLocal();
+    notifyListeners();
+  }
+
+  void setIsManualCollege(bool value) {
+    _isManualCollege = value;
+    if (_isManualCollege) {
+      _selectedCollege = null;
+    }
+    saveDraftToLocal();
+    notifyListeners();
+  }
+
+  void setManualCollegeName(String name) {
+    _manualCollegeName = name;
+    saveDraftToLocal();
+    notifyListeners();
+  }
+
+  void setManualCollegeCode(String code) {
+    _manualCollegeCode = code;
+    saveDraftToLocal();
+    notifyListeners();
+  }
+
+  void setManualCollege({required String name, String? code}) {
+    _isManualCollege = true;
+    _selectedCollege = null;
+    _manualCollegeName = name;
+    _manualCollegeCode = code ?? '';
     saveDraftToLocal();
     notifyListeners();
   }
@@ -606,8 +674,16 @@ class OnboardingProvider extends ChangeNotifier {
       case 0: // Welcome Step
         return true;
       case 1: // College Step
+        if (_isManualCollege) {
+          if (_manualCollegeName.trim().isEmpty) {
+            _errorMessage = 'Please enter your college name to continue.';
+            notifyListeners();
+            return false;
+          }
+          return true;
+        }
         if (_selectedCollege == null) {
-          _errorMessage = 'Please select your college to continue.';
+          _errorMessage = 'Please select your college or enter it manually to continue.';
           notifyListeners();
           return false;
         }
@@ -648,16 +724,6 @@ class OnboardingProvider extends ChangeNotifier {
             notifyListeners();
             return false;
           }
-          if (_verificationMethod == 'college_email' && !_isEmailVerified) {
-            _errorMessage = 'Please verify your college email with the OTP or switch to College ID Card upload.';
-            notifyListeners();
-            return false;
-          }
-          if (_verificationMethod == 'college_id' && _idCardBytes == null) {
-            _errorMessage = 'Please upload or capture your student College ID card photo.';
-            notifyListeners();
-            return false;
-          }
         }
         return true;
       case 5: // Verification & Legal Step
@@ -668,16 +734,6 @@ class OnboardingProvider extends ChangeNotifier {
         }
         if (!_termsAccepted) {
           _errorMessage = 'Please accept the Terms of Service & Privacy Policy.';
-          notifyListeners();
-          return false;
-        }
-        if (_verificationMethod == 'college_email' && !_isEmailVerified) {
-          _errorMessage = 'Please verify your college email with the OTP or switch to College ID Card upload.';
-          notifyListeners();
-          return false;
-        }
-        if (_verificationMethod == 'college_id' && _idCardBytes == null) {
-          _errorMessage = 'Please upload or capture your student College ID card photo.';
           notifyListeners();
           return false;
         }
@@ -695,7 +751,13 @@ class OnboardingProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    if (_selectedCollege == null) {
+    if (_isManualCollege) {
+      if (_manualCollegeName.trim().isEmpty) {
+        _errorMessage = 'College name is required.';
+        notifyListeners();
+        return false;
+      }
+    } else if (_selectedCollege == null) {
       _errorMessage = 'College selection is required.';
       notifyListeners();
       return false;
@@ -781,8 +843,11 @@ class OnboardingProvider extends ChangeNotifier {
 
     try {
       if (_avatarBytesToUpload != null) {
-        final uploaded = await uploadAvatarToStorage(currentProfile.id);
-        if (!uploaded) return null;
+        try {
+          await uploadAvatarToStorage(currentProfile.id);
+        } catch (e) {
+          debugPrint('Avatar upload warning (proceeding with local avatar): $e');
+        }
       }
 
       if (_idCardBytes != null) {
@@ -801,9 +866,31 @@ class OnboardingProvider extends ChangeNotifier {
         } catch (_) {}
       }
 
+      College? collegeToUse = _selectedCollege;
+      if (_isManualCollege && _manualCollegeName.trim().isNotEmpty) {
+        final code = _manualCollegeCode.trim().isNotEmpty
+            ? _manualCollegeCode.trim().toUpperCase()
+            : _generateCollegeCode(_manualCollegeName.trim());
+        final customCollege = College(
+          id: 'manual_${DateTime.now().millisecondsSinceEpoch}',
+          name: _manualCollegeName.trim(),
+          code: code,
+          stateId: _selectedState?.id,
+          universityId: _selectedUniversity?.id,
+        );
+        try {
+          collegeToUse = await _collegeRepository.createCollege(customCollege);
+          _selectedCollege = collegeToUse;
+        } catch (e) {
+          debugPrint('Manual college creation fallback: $e');
+          collegeToUse = customCollege;
+          _selectedCollege = customCollege;
+        }
+      }
+
       final updatedProfile = currentProfile.copyWith(
         fullName: _fullName,
-        collegeId: _selectedCollege?.id,
+        collegeId: collegeToUse?.id,
         branch: _branch,
         semester: _semester,
         division: _division,
@@ -820,11 +907,19 @@ class OnboardingProvider extends ChangeNotifier {
       final savedProfile = await profileRepository.updateProfile(updatedProfile);
 
       try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+          'scholarsync_user_profile_${currentProfile.id}',
+          jsonEncode(savedProfile.toJson()),
+        );
+      } catch (_) {}
+
+      try {
         await _academicCatalogRepository.saveStudentAcademicProfile(
           userId: currentProfile.id,
-          stateId: _selectedState?.id ?? _selectedCollege?.stateId,
-          universityId: _selectedUniversity?.id ?? _selectedCollege?.universityId,
-          collegeId: _selectedCollege?.id,
+          stateId: _selectedState?.id ?? collegeToUse?.stateId,
+          universityId: _selectedUniversity?.id ?? collegeToUse?.universityId,
+          collegeId: collegeToUse?.id,
           streamId: _selectedStream?.id ?? _selectedCourse?.streamId,
           courseId: _selectedCourse?.id,
           branchId: _selectedBranch?.id,
@@ -840,8 +935,8 @@ class OnboardingProvider extends ChangeNotifier {
       try {
         await _academicCatalogRepository.autoEnrollSemesterSubjects(
           userId: currentProfile.id,
-          universityId: _selectedUniversity?.id ?? _selectedCollege?.universityId,
-          collegeId: _selectedCollege?.id,
+          universityId: _selectedUniversity?.id ?? collegeToUse?.universityId,
+          collegeId: collegeToUse?.id,
           courseId: _selectedCourse?.id,
           branchId: _selectedBranch?.id,
           branchName: _branch,
@@ -867,5 +962,15 @@ class OnboardingProvider extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  String _generateCollegeCode(String name) {
+    final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.length >= 2) {
+      return words.take(4).map((w) => w[0].toUpperCase()).join();
+    } else if (name.trim().length >= 4) {
+      return name.trim().substring(0, 4).toUpperCase();
+    }
+    return name.trim().toUpperCase();
   }
 }

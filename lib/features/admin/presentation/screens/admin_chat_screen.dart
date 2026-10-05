@@ -17,6 +17,7 @@ class AdminChatScreen extends StatefulWidget {
 
 class _AdminChatScreenState extends State<AdminChatScreen> {
   String? _selectedTypeFilter;
+  int _selectedAdminTab = 0; // 0 = Active Channels, 1 = Pending Requests
 
   @override
   void initState() {
@@ -622,11 +623,12 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _openCreateRoomDialog(context),
         backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_comment_rounded, color: Colors.black),
-        label: const Text('New Channel', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        foregroundColor: Colors.black,
+        tooltip: 'New Channel',
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -646,7 +648,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                         style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
                       ),
                       Text(
-                        '${rooms.length} active channels with Safe-Lock control & roster inspector',
+                        '${rooms.length} active channels • ${admin.pendingRoomRequests.length} pending approvals',
                         style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.6)),
                       ),
                     ],
@@ -660,6 +662,33 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
               ],
             ),
             const SizedBox(height: 14),
+
+            // Tab Selector: Channels vs Pending Requests
+            Row(
+              children: [
+                Expanded(
+                  child: SegmentedButton<int>(
+                    segments: [
+                      ButtonSegment<int>(
+                        value: 0,
+                        label: Text('Active Channels (${rooms.length})'),
+                        icon: const Icon(Icons.forum_rounded, size: 16),
+                      ),
+                      ButtonSegment<int>(
+                        value: 1,
+                        label: Text('Pending Requests (${admin.pendingRoomRequests.length})'),
+                        icon: const Icon(Icons.pending_actions_rounded, size: 16),
+                      ),
+                    ],
+                    selected: {_selectedAdminTab},
+                    onSelectionChanged: (val) => setState(() => _selectedAdminTab = val.first),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            if (_selectedAdminTab == 0) ...[
 
             // Channel Filter Chips
             SingleChildScrollView(
@@ -907,6 +936,159 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                           },
                         ),
             ),
+            ] else ...[
+              // Tab 1: Pending Room Approvals List
+              Expanded(
+                child: admin.pendingRoomRequests.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.check_circle_outline_rounded, size: 56, color: Colors.white.withValues(alpha: 0.4)),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No Pending Room Requests',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'All student study group submissions have been reviewed.',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: admin.pendingRoomRequests.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final req = admin.pendingRoomRequests[index];
+                          final reqId = req['id']?.toString() ?? '';
+                          final name = req['name']?.toString() ?? 'Study Room';
+                          final category = req['category']?.toString() ?? 'academic';
+                          final desc = req['description']?.toString() ?? 'No description provided';
+                          final policy = req['joining_policy']?.toString() ?? 'public_academic';
+
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F1218),
+                              borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                              border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        name,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warning.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        category.toUpperCase(),
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.warning),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  desc,
+                                  style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.7)),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Policy: $policy',
+                                  style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.white.withValues(alpha: 0.5)),
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    TextButton.icon(
+                                      icon: const Icon(Icons.close_rounded, size: 16, color: AppColors.error),
+                                      label: const Text('Reject', style: TextStyle(color: AppColors.error, fontSize: 12)),
+                                      onPressed: () async {
+                                        final reasonCtrl = TextEditingController();
+                                        showDialog(
+                                          context: context,
+                                          builder: (dialogCtx) => AlertDialog(
+                                            backgroundColor: const Color(0xFF141418),
+                                            title: const Text('Reject Room Request', style: TextStyle(color: Colors.white)),
+                                            content: TextField(
+                                              controller: reasonCtrl,
+                                              style: const TextStyle(color: Colors.white),
+                                              decoration: const InputDecoration(
+                                                labelText: 'Rejection Reason',
+                                                hintText: 'e.g. Duplicate room, inappropriate guidelines...',
+                                              ),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(dialogCtx),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              FilledButton(
+                                                style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                                                onPressed: () async {
+                                                  Navigator.pop(dialogCtx);
+                                                  final ok = await admin.rejectRoomRequest(
+                                                    reqId,
+                                                    'admin-reviewer',
+                                                    reasonCtrl.text.trim().isEmpty ? 'Does not meet campus guidelines' : reasonCtrl.text.trim(),
+                                                  );
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(ok ? 'Request rejected.' : 'Failed to reject request.'),
+                                                        backgroundColor: ok ? AppColors.warning : AppColors.error,
+                                                      ),
+                                                    );
+                                                  }
+                                                },
+                                                child: const Text('Confirm Reject'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(width: 8),
+                                    FilledButton.icon(
+                                      style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+                                      icon: const Icon(Icons.check_rounded, size: 16),
+                                      label: const Text('Approve & Launch', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                      onPressed: () async {
+                                        final ok = await admin.approveRoomRequest(reqId, 'admin-reviewer');
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(ok ? 'Study lounge approved and launched!' : 'Failed to approve room.'),
+                                              backgroundColor: ok ? AppColors.success : AppColors.error,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ],
         ),
       ),

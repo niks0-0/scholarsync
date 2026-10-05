@@ -152,12 +152,12 @@ class _AdminMarketplaceScreenState extends State<AdminMarketplaceScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF10B981),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.black,
-        icon: const Icon(Icons.add_shopping_cart_rounded),
-        label: const Text('Add Listing', style: TextStyle(fontWeight: FontWeight.bold)),
+        tooltip: 'Add Listing',
         onPressed: () => _openCreateListingDialog(context),
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

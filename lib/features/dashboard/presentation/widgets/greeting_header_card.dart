@@ -16,6 +16,7 @@ class GreetingHeaderCard extends StatelessWidget {
   void _showCustomizeSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => const DashboardEditModeSheet(),

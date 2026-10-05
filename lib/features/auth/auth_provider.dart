@@ -228,6 +228,23 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Reload current Firebase user to verify updated attributes (e.g. emailVerified).
+  Future<bool> reloadUser() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final user = await _repository.reloadUser();
+      _currentUser = user;
+      _setLoading(false);
+      notifyListeners();
+      return user?.isEmailVerified ?? false;
+    } catch (e) {
+      _setLoading(false);
+      return false;
+    }
+  }
+
+
   /// Get Firebase ID Token (JWT).
   Future<String?> getIdToken({bool forceRefresh = false}) async {
     try {

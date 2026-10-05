@@ -49,53 +49,67 @@ class _BunkCalculatorSheetState extends State<BunkCalculatorSheet> {
     final statusColor =
         isProjectedSafe ? const Color(0xFF10B981) : const Color(0xFFEF4444);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        20,
-        14,
-        20,
-        MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Drag handle
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
+    final mediaQuery = MediaQuery.of(context);
 
-          // Title & Close
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Safe Bunk Simulator',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
+    return SafeArea(
+      top: false,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: mediaQuery.size.height * 0.85,
+        ),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          14,
+          20,
+          mediaQuery.viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded, size: 20),
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+            ),
+            const SizedBox(height: 16),
+
+            // Title & Close
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Safe Bunk Simulator',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Scrollable Content
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
 
           // Subject picker dropdown
           DropdownButtonFormField<SubjectAttendance>(
@@ -247,10 +261,16 @@ class _BunkCalculatorSheetState extends State<BunkCalculatorSheet> {
               ],
             ),
           ),
+          const SizedBox(height: 12),
         ],
       ),
-    );
-  }
+    ),
+  ),
+],
+),
+),
+);
+}
 
   Widget _buildStepperRow(
     BuildContext context, {

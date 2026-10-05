@@ -106,40 +106,53 @@ class TimetableClassCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        // Subject Code Tag
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            entry.subjectCode,
-                            style: textTheme.labelSmall?.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'monospace',
-                            ),
+                        Flexible(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Subject Code Tag
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    entry.subjectCode,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: textTheme.labelSmall?.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              // Class Type Tag
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
+                                ),
+                                child: Text(
+                                  entry.classType,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.labelSmall?.copyWith(
+                                    fontSize: 10,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 6),
-                        // Class Type Tag
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surface,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
-                          ),
-                          child: Text(
-                            entry.classType,
-                            style: textTheme.labelSmall?.copyWith(
-                              fontSize: 10,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
                         // Status Badge
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

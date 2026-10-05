@@ -154,11 +154,12 @@ class _AdminEventsScreenState extends State<AdminEventsScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _openCreateEventDialog(context),
         backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.black),
-        label: const Text('Publish Event', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        foregroundColor: Colors.black,
+        tooltip: 'Publish Event',
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

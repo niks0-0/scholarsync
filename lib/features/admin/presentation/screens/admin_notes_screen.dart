@@ -4,6 +4,7 @@ import 'package:scholarsync/core/constants/app_dimensions.dart';
 import 'package:scholarsync/core/theme/app_colors.dart';
 import 'package:scholarsync/features/admin/domain/models/study_note.dart';
 import 'package:scholarsync/features/admin/presentation/admin_provider.dart';
+import 'package:scholarsync/features/auth/auth_provider.dart';
 import 'package:scholarsync/features/dashboard/presentation/widgets/dashboard_skeleton_loader.dart';
 
 class AdminNotesScreen extends StatefulWidget {
@@ -174,14 +175,15 @@ class _AdminNotesScreenState extends State<AdminNotesScreen> {
                 }
 
                 Navigator.pop(ctx);
+                final authUser = context.read<AuthProvider>().currentUser;
                 final success = await admin.createStudyNote(
                   StudyNote(
                     id: '',
                     title: title,
-                    description: descController.text.trim(),
-                    subjectId: selectedSubjectId ?? '',
-                    uploaderId: 'SQJRGQZkujOAIfFEetfaqPqtHbL2',
-                    uploaderName: 'App Owner Admin',
+                    description: descController.text.trim().isNotEmpty ? descController.text.trim() : null,
+                    subjectId: selectedSubjectId ?? (admin.subjects.isNotEmpty ? admin.subjects.first.id : ''),
+                    uploaderId: authUser?.uid ?? 'SQJRGQZkujOAIfFEetfaqPqtHbL2',
+                    uploaderName: authUser?.displayName ?? 'App Owner Admin',
                     fileUrl: fileUrl,
                     fileType: selectedFileType,
                     fileSizeBytes: 2048576,
@@ -214,12 +216,15 @@ class _AdminNotesScreenState extends State<AdminNotesScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.black,
-        icon: const Icon(Icons.upload_file_rounded),
-        label: const Text('Upload Material', style: TextStyle(fontWeight: FontWeight.bold)),
-        onPressed: () => _openUploadNoteDialog(context),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: FloatingActionButton(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.black,
+          tooltip: 'Upload Material',
+          onPressed: () => _openUploadNoteDialog(context),
+          child: const Icon(Icons.add_rounded, size: 28),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

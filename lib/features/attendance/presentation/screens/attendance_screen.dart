@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/auth_provider.dart';
+import '../../../timetable/presentation/timetable_provider.dart';
 import '../attendance_provider.dart';
 import '../widgets/add_subject_dialog.dart';
 import '../widgets/attendance_summary_header.dart';
 import '../widgets/bunk_calculator_sheet.dart';
 import '../widgets/smart_insights_sheet.dart';
 import '../widgets/subject_attendance_card.dart';
+import '../widgets/today_attendance_schedule_card.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -23,10 +26,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final user = context.read<AuthProvider>().currentUser;
-      if (user != null) {
-        context.read<AttendanceProvider>().loadAttendance(user.uid);
+      final uid = user?.uid ?? 'guest_user';
+      if (mounted) {
+        try {
+          await context.read<AttendanceProvider>().loadAttendance(uid);
+          if (mounted) {
+            await context.read<TimetableProvider>().loadWeeklySchedule(uid);
+            if (mounted) {
+              final weekly = context.read<TimetableProvider>().weeklySchedule;
+              context.read<AttendanceProvider>().syncTodayClasses(weekly);
+            }
+          }
+        } catch (e) {
+          debugPrint('Error loading attendance data: $e');
+        }
       }
     });
   }
@@ -85,6 +100,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
         title: const Text('Attendance Tracker'),
         actions: [
           IconButton(
@@ -104,15 +130,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: _openAddSubject,
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.black,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'Track Subject',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
+        tooltip: 'Track Subject',
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -138,6 +161,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   atRiskCount: attendance.atRiskCount,
                   onOpenCalculator: _openCalculator,
                 ),
+                const SizedBox(height: 16),
+
+                // Today's Timetable-Driven Schedule & Attendance
+                const TodayAttendanceScheduleCard(),
                 const SizedBox(height: 16),
 
                 // Filter Pill Selector (All, Safe, At Risk)
@@ -239,17 +266,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ...filteredSubjects.map(
                     (sub) => SubjectAttendanceCard(
                       subject: sub,
-                      onMarkPresent: () => attendance.markClass(
-                        subjectId: sub.id,
-                        isPresent: true,
-                      ),
-                      onMarkAbsent: () => attendance.markClass(
-                        subjectId: sub.id,
-                        isPresent: false,
-                      ),
-                      onUndo: () => attendance.undoMarkClass(
-                        subjectId: sub.id,
-                      ),
+                      todayStatus: attendance.getTodayStatusForSubject(sub.id),
+                      onMarkPresent: attendance.isSelectedDateToday
+                          ? () => attendance.markClass(
+                              subjectId: sub.id,
+                              isPresent: true,
+                            )
+                          : null,
+                      onMarkAbsent: attendance.isSelectedDateToday
+                          ? () => attendance.markClass(
+                              subjectId: sub.id,
+                              isPresent: false,
+                            )
+                          : null,
+                      onUndo: attendance.isSelectedDateToday
+                          ? () => attendance.undoMarkClass(
+                              subjectId: sub.id,
+                            )
+                          : null,
                     ),
                   ),
 
@@ -295,7 +329,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           alignment: Alignment.center,
           child: Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: theme.textTheme.labelMedium?.copyWith(
+              fontSize: 11,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               color: isSelected
                   ? (isAlert ? const Color(0xFFEF4444) : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary))

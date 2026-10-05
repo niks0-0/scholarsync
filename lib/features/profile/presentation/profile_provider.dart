@@ -1,4 +1,7 @@
+import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth, User;
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../storage/data/repositories/supabase_storage_repository.dart';
 import '../../storage/domain/repositories/storage_repository.dart';
 import '../data/repositories/supabase_profile_repository.dart';
@@ -7,13 +10,37 @@ import '../domain/repositories/profile_repository.dart';
 
 class ProfileProvider extends ChangeNotifier {
   ProfileProvider({
+    UserProfile? initialProfile,
     ProfileRepository? repository,
     StorageRepository? storageRepository,
-  })  : _repository = repository ?? const SupabaseProfileRepository(),
-        _storageRepository = storageRepository ?? const SupabaseStorageRepository();
+  })  : _profile = initialProfile,
+        _repository = repository ?? const SupabaseProfileRepository(),
+        _storageRepository = storageRepository ?? const SupabaseStorageRepository() {
+    if (_profile != null) {
+      recordActiveDay();
+    }
+    _listenToAuthChanges();
+  }
 
   final ProfileRepository _repository;
   final StorageRepository _storageRepository;
+  StreamSubscription<User?>? _authSubscription;
+
+  void _listenToAuthChanges() {
+    _authSubscription = FirebaseAuth.instance.userChanges().listen((user) async {
+      if (user != null) {
+        if (_profile == null || _profile!.id != user.uid) {
+          await loadProfile(user.uid);
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
 
   UserProfile? _profile;
   bool _isLoading = false;
@@ -42,6 +69,54 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Records daily user activity and increments activeDays if this is a new calendar day.
+  Future<void> recordActiveDay() async {
+    if (_profile == null) return;
+    final now = DateTime.now();
+    final last = _profile!.lastActiveAt;
+    final isNewDay = last == null ||
+        last.year != now.year ||
+        last.month != now.month ||
+        last.day != now.day;
+
+    if (isNewDay) {
+      final currentDays = _profile!.activeDays;
+      final updated = _profile!.copyWith(
+        activeDays: currentDays <= 0 ? 1 : currentDays + 1,
+        lastActiveAt: now,
+      );
+      _profile = updated;
+      notifyListeners();
+      try {
+        await _repository.updateProfile(updated);
+      } catch (e) {
+        debugPrint('Active days sync note: $e');
+      }
+    }
+  }
+
+  /// Loads profile from local cache or Supabase for [firebaseUid].
+  Future<UserProfile?> loadProfile(String firebaseUid) async {
+    if (_profile != null && _profile!.id == firebaseUid) return _profile;
+    _setLoading(true);
+    _setError(null);
+    try {
+      final result = await _repository.getProfile(firebaseUid);
+      if (result != null) {
+        _profile = result;
+        _isLoading = false;
+        notifyListeners();
+        recordActiveDay();
+        return result;
+      }
+    } catch (e) {
+      debugPrint('ProfileProvider.loadProfile error: $e');
+    }
+    _isLoading = false;
+    notifyListeners();
+    return null;
+  }
+
   /// Fetches or creates the user profile in Supabase for [firebaseUid].
   Future<UserProfile?> syncProfile({
     required String firebaseUid,
@@ -62,6 +137,7 @@ class ProfileProvider extends ChangeNotifier {
       );
       _profile = result;
       _setLoading(false);
+      recordActiveDay();
       return result;
     } catch (e) {
       _setError('Failed to sync profile with Supabase. Form data is preserved for retry.');
@@ -115,5 +191,8 @@ class ProfileProvider extends ChangeNotifier {
     _error = null;
     _isLoading = false;
     notifyListeners();
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.remove('scholarsync_last_active_uid');
+    }).catchError((_) {});
   }
 }

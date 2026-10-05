@@ -1,3 +1,4 @@
+import '../models/daily_class_attendance.dart';
 import '../models/subject_attendance.dart';
 
 abstract class AttendanceRepository {
@@ -12,4 +13,11 @@ abstract class AttendanceRepository {
   });
 
   Future<void> resetSubjectAttendance(String userId, String subjectId);
+
+  Future<List<DailyClassAttendance>> getDailyAttendanceList(String userId) async {
+    return [];
+  }
+
+  Future<void> saveDailyAttendanceList(
+      String userId, List<DailyClassAttendance> list) async {}
 }

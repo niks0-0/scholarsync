@@ -8,6 +8,7 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../attendance/presentation/attendance_provider.dart';
 import '../../../auth/auth_provider.dart';
+import '../../../profile/presentation/profile_provider.dart';
 import '../../../dashboard/presentation/widgets/greeting_header_card.dart';
 import '../../../attendance/presentation/widgets/smart_insights_sheet.dart';
 import '../../../leaderboard/domain/models/leaderboard_models.dart';
@@ -35,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (user != null) {
         context.read<AttendanceProvider>().loadAttendance(user.uid);
         context.read<DashboardProvider>().loadDashboard(user.uid);
+        context.read<ProfileProvider>().recordActiveDay();
       }
     });
   }
@@ -106,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // ── Dynamic Personalized Layout OR Standard Bento Overview ───
               if (isCustomized) ...[
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
@@ -190,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
 
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                   sliver: SliverToBoxAdapter(
                     child: _BentoGrid(
                       attendance: attendance,
@@ -234,6 +236,7 @@ class _MinimalCustomizeHeader extends StatelessWidget {
             onPressed: () {
               showModalBottomSheet(
                 context: context,
+                useRootNavigator: true,
                 isScrollControlled: true,
                 backgroundColor: Colors.transparent,
                 builder: (_) => const DashboardEditModeSheet(),
@@ -406,7 +409,7 @@ class _FocusCardCarouselState extends State<_FocusCardCarousel> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push(AppRoutes.attendance),
+        onTap: () => context.go(AppRoutes.attendance),
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -446,12 +449,14 @@ class _FocusCardCarouselState extends State<_FocusCardCarousel> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    CircularProgressIndicator(
-                      value: (pct / 100).clamp(0.0, 1.0),
-                      strokeWidth: 8,
-                      backgroundColor: attColor.withValues(alpha: 0.18),
-                      valueColor: AlwaysStoppedAnimation<Color>(attColor),
-                      strokeCap: StrokeCap.round,
+                    Positioned.fill(
+                      child: CircularProgressIndicator(
+                        value: (pct / 100).clamp(0.0, 1.0),
+                        strokeWidth: 8,
+                        backgroundColor: attColor.withValues(alpha: 0.18),
+                        valueColor: AlwaysStoppedAnimation<Color>(attColor),
+                        strokeCap: pct >= 99.5 ? StrokeCap.butt : StrokeCap.round,
+                      ),
                     ),
                     Column(
                       mainAxisSize: MainAxisSize.min,
@@ -459,7 +464,7 @@ class _FocusCardCarouselState extends State<_FocusCardCarousel> {
                         Text(
                           '${pct.toStringAsFixed(0)}%',
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.w900,
                             color: attColor,
                             letterSpacing: -0.5,
@@ -505,14 +510,14 @@ class _FocusCardCarouselState extends State<_FocusCardCarousel> {
                           ),
                         ),
                         const Spacer(),
-                        InkWell(
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: widget.onOpenInsights,
-                          borderRadius: BorderRadius.circular(8),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
+                              gradient: const LinearGradient(
                                 colors: [
                                   AppColors.primary,
                                   AppColors.accent,
@@ -607,7 +612,7 @@ class _FocusCardCarouselState extends State<_FocusCardCarousel> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push(AppRoutes.timetable),
+        onTap: () => context.go(AppRoutes.timetable),
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -743,7 +748,7 @@ class _FocusCardCarouselState extends State<_FocusCardCarousel> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push(AppRoutes.leaderboard),
+        onTap: () => context.go(AppRoutes.leaderboard),
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -885,7 +890,7 @@ class _FocusCardCarouselState extends State<_FocusCardCarousel> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push(AppRoutes.resources),
+        onTap: () => context.go(AppRoutes.resources),
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -1016,7 +1021,7 @@ class _FocusCardCarouselState extends State<_FocusCardCarousel> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push(AppRoutes.community),
+        onTap: () => context.go(AppRoutes.community),
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -1249,7 +1254,7 @@ class _BentoGrid extends StatelessWidget {
                 isDark: isDark,
                 accentColor: _statusColor,
                 height: 160,
-                onTap: () => context.push(AppRoutes.attendance),
+                onTap: () => context.go(AppRoutes.attendance),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1332,14 +1337,16 @@ class _BentoGrid extends StatelessWidget {
                     isDark: isDark,
                     accentColor: AppColors.warning,
                     height: 75,
-                    onTap: () => context.push(AppRoutes.attendance),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    onTap: () => context.go(AppRoutes.attendance),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
                           children: [
                             const Icon(Icons.hotel_rounded,
-                                color: AppColors.warning, size: 16),
+                                color: AppColors.warning, size: 15),
                             const SizedBox(width: 4),
                             Text(
                               'Bunks Left',
@@ -1351,23 +1358,29 @@ class _BentoGrid extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const Spacer(),
-                        Text(
-                          _totalSafeBunks(attendance),
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.warning,
-                            height: 1,
-                          ),
-                        ),
-                        Text(
-                          'classes',
-                          style: TextStyle(
-                            fontSize: 9,
-                            color: AppColors.warning.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w600,
-                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              _totalSafeBunks(attendance),
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.warning,
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'classes',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                color: AppColors.warning.withValues(alpha: 0.75),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -1377,14 +1390,16 @@ class _BentoGrid extends StatelessWidget {
                     isDark: isDark,
                     accentColor: AppColors.secondary,
                     height: 75,
-                    onTap: () => context.push(AppRoutes.attendance),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    onTap: () => context.go(AppRoutes.attendance),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
                           children: [
                             const Icon(Icons.book_rounded,
-                                color: AppColors.secondary, size: 16),
+                                color: AppColors.secondary, size: 15),
                             const SizedBox(width: 4),
                             Text(
                               'Subjects',
@@ -1396,23 +1411,29 @@ class _BentoGrid extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const Spacer(),
-                        Text(
-                          '${attendance.subjects.length}',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.secondary,
-                            height: 1,
-                          ),
-                        ),
-                        Text(
-                          'tracked',
-                          style: TextStyle(
-                            fontSize: 9,
-                            color: AppColors.secondary.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w600,
-                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              '${attendance.subjects.length}',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.secondary,
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'tracked',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                color: AppColors.secondary.withValues(alpha: 0.75),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -1433,7 +1454,7 @@ class _BentoGrid extends StatelessWidget {
                 isDark: isDark,
                 accentColor: const Color(0xFFF59E0B),
                 height: 90,
-                onTap: () => context.push(AppRoutes.leaderboard),
+                onTap: () => context.go(AppRoutes.leaderboard),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1512,7 +1533,7 @@ class _BentoGrid extends StatelessWidget {
                 isDark: isDark,
                 accentColor: const Color(0xFF10B981),
                 height: 90,
-                onTap: () => context.push(AppRoutes.timetable),
+                onTap: () => context.go(AppRoutes.timetable),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1679,6 +1700,7 @@ class _BentoTile extends StatefulWidget {
     required this.height,
     required this.child,
     required this.onTap,
+    this.padding = const EdgeInsets.all(14),
   });
 
   final bool isDark;
@@ -1686,6 +1708,7 @@ class _BentoTile extends StatefulWidget {
   final double height;
   final Widget child;
   final VoidCallback onTap;
+  final EdgeInsetsGeometry padding;
 
   @override
   State<_BentoTile> createState() => _BentoTileState();
@@ -1694,45 +1717,51 @@ class _BentoTile extends StatefulWidget {
 class _BentoTileState extends State<_BentoTile> {
   bool _pressed = false;
 
+  void _handleTap() {
+    HapticFeedback.selectionClick();
+    widget.onTap();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) {
-        HapticFeedback.selectionClick();
-        setState(() => _pressed = true);
-      },
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.96 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          height: widget.height,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: widget.isDark ? AppColors.darkSurface : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: _pressed
-                  ? widget.accentColor.withValues(alpha: 0.5)
-                  : (widget.isDark
-                      ? widget.accentColor.withValues(alpha: 0.15)
-                      : widget.accentColor.withValues(alpha: 0.2)),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: widget.accentColor.withValues(alpha: _pressed ? 0.18 : 0.07),
-                blurRadius: _pressed ? 16 : 8,
-                offset: const Offset(0, 3),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _handleTap,
+        onHighlightChanged: (val) {
+          if (_pressed != val) {
+            setState(() => _pressed = val);
+          }
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedScale(
+          scale: _pressed ? 0.96 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: widget.height,
+            padding: widget.padding,
+            decoration: BoxDecoration(
+              color: widget.isDark ? AppColors.darkSurface : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _pressed
+                    ? widget.accentColor.withValues(alpha: 0.5)
+                    : (widget.isDark
+                        ? widget.accentColor.withValues(alpha: 0.15)
+                        : widget.accentColor.withValues(alpha: 0.2)),
+                width: 1.2,
               ),
-            ],
+              boxShadow: [
+                BoxShadow(
+                  color: widget.accentColor.withValues(alpha: _pressed ? 0.18 : 0.07),
+                  blurRadius: _pressed ? 16 : 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: widget.child,
           ),
-          child: widget.child,
         ),
       ),
     );
@@ -1813,8 +1842,10 @@ class _ArcGaugePainter extends CustomPainter {
 
     final rect = Rect.fromCircle(center: Offset(cx, cy), radius: r);
     canvas.drawArc(rect, math.pi, math.pi, false, bgPaint);
-    canvas.drawArc(
-        rect, math.pi, math.pi * (percentage / 100).clamp(0, 1), false, fgPaint);
+    final sweep = math.pi * (percentage / 100).clamp(0.0, 1.0);
+    if (sweep > 0.01) {
+      canvas.drawArc(rect, math.pi, sweep, false, fgPaint);
+    }
   }
 
   @override

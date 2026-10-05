@@ -62,6 +62,17 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
         title: const Text('Global Search'),
         elevation: 0,
       ),

@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../domain/models/daily_class_attendance.dart';
 import '../../domain/models/subject_attendance.dart';
 
 class SubjectAttendanceCard extends StatelessWidget {
   const SubjectAttendanceCard({
     super.key,
     required this.subject,
-    required this.onMarkPresent,
-    required this.onMarkAbsent,
-    required this.onUndo,
+    this.todayStatus,
+    this.onMarkPresent,
+    this.onMarkAbsent,
+    this.onUndo,
   });
 
   final SubjectAttendance subject;
-  final VoidCallback onMarkPresent;
-  final VoidCallback onMarkAbsent;
-  final VoidCallback onUndo;
+  final AttendanceStatus? todayStatus;
+  final VoidCallback? onMarkPresent;
+  final VoidCallback? onMarkAbsent;
+  final VoidCallback? onUndo;
 
   @override
   Widget build(BuildContext context) {
@@ -123,34 +126,46 @@ class SubjectAttendanceCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${subject.attendedClasses} of ${subject.totalClasses} attended',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+              Flexible(
+                child: Text(
+                  '${subject.attendedClasses} of ${subject.totalClasses} attended',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                  ),
                 ),
               ),
-              Row(
-                children: [
-                  Icon(
-                    isSafe ? Icons.check_circle_outline_rounded : Icons.warning_amber_rounded,
-                    size: 13,
-                    color: color,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    isSafe
-                        ? (safeBunks > 0
-                            ? 'Can miss $safeBunks class${safeBunks == 1 ? '' : 'es'}'
-                            : 'On the margin (75%)')
-                        : 'Attend next $requiredClasses class${requiredClasses == 1 ? '' : 'es'}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isSafe ? Icons.check_circle_outline_rounded : Icons.warning_amber_rounded,
+                      size: 13,
                       color: color,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        isSafe
+                            ? (safeBunks > 0
+                                ? 'Can miss $safeBunks class${safeBunks == 1 ? '' : 'es'}'
+                                : 'On margin (75%)')
+                            : 'Attend next $requiredClasses class${requiredClasses == 1 ? '' : 'es'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -161,19 +176,35 @@ class SubjectAttendanceCard extends StatelessWidget {
           // Action Buttons: + Present, - Absent, Undo
           Row(
             children: [
-              // Present Button
+              // Present Button (Selected if todayStatus == present)
               Expanded(
-                child: OutlinedButton.icon(
+                child: FilledButton.icon(
                   onPressed: onMarkPresent,
-                  icon: const Icon(Icons.check_rounded, size: 16, color: Color(0xFF10B981)),
-                  label: const Text('Present'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white : Colors.black,
+                  icon: Icon(
+                    Icons.check_rounded,
+                    size: 15,
+                    color: todayStatus == AttendanceStatus.present ? Colors.white : const Color(0xFF10B981),
+                  ),
+                  label: Text(
+                    todayStatus == AttendanceStatus.present ? 'Present ✓' : 'Present',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: todayStatus == AttendanceStatus.present
+                        ? const Color(0xFF10B981)
+                        : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                    foregroundColor: todayStatus == AttendanceStatus.present
+                        ? Colors.white
+                        : (isDark ? Colors.white70 : Colors.black87),
                     side: BorderSide(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.5),
+                      color: todayStatus == AttendanceStatus.present
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF10B981).withValues(alpha: 0.3),
                     ),
                     minimumSize: const Size(0, 36),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    visualDensity: VisualDensity.compact,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
                     ),
@@ -182,33 +213,51 @@ class SubjectAttendanceCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
 
-              // Absent Button
+              // Absent Button (Selected if todayStatus == absent)
               Expanded(
-                child: OutlinedButton.icon(
+                child: FilledButton.icon(
                   onPressed: onMarkAbsent,
-                  icon: const Icon(Icons.close_rounded, size: 16, color: Color(0xFFEF4444)),
-                  label: const Text('Absent'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white : Colors.black,
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 15,
+                    color: todayStatus == AttendanceStatus.absent ? Colors.white : const Color(0xFFEF4444),
+                  ),
+                  label: Text(
+                    todayStatus == AttendanceStatus.absent ? 'Absent ✗' : 'Absent',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: todayStatus == AttendanceStatus.absent
+                        ? const Color(0xFFEF4444)
+                        : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                    foregroundColor: todayStatus == AttendanceStatus.absent
+                        ? Colors.white
+                        : (isDark ? Colors.white70 : Colors.black87),
                     side: BorderSide(
-                      color: const Color(0xFFEF4444).withValues(alpha: 0.5),
+                      color: todayStatus == AttendanceStatus.absent
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFFEF4444).withValues(alpha: 0.3),
                     ),
                     minimumSize: const Size(0, 36),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    visualDensity: VisualDensity.compact,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
 
               // Undo Button
               IconButton(
                 onPressed: onUndo,
                 icon: const Icon(Icons.undo_rounded, size: 18),
-                tooltip: 'Undo last record',
+                tooltip: 'Reset today attendance',
                 visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.all(6),
+                constraints: const BoxConstraints(),
               ),
             ],
           ),

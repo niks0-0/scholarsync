@@ -79,6 +79,9 @@ abstract class AdminRepository {
   /// Create a new student profile.
   Future<UserProfile> createStudentProfile(UserProfile profile);
 
+  /// Update an existing student/user profile details in the database.
+  Future<UserProfile> updateStudentProfile(UserProfile profile);
+
   /// Delete a student profile.
   Future<void> deleteStudentProfile(String userId);
 

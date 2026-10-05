@@ -1,3 +1,5 @@
+import 'dart:ui';
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth, User;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,15 +12,17 @@ import 'core/theme/app_theme.dart';
 import 'features/academic_catalog/data/repositories/supabase_academic_catalog_repository.dart';
 import 'features/academic_catalog/domain/repositories/academic_catalog_repository.dart';
 import 'features/academic_catalog/presentation/academic_catalog_provider.dart';
-import 'features/admin/data/repositories/supabase_admin_repository.dart';
+import 'features/admin/data/repositories/resilient_admin_repository.dart';
 import 'features/admin/domain/repositories/admin_repository.dart';
 import 'features/admin/presentation/admin_provider.dart';
 import 'features/auth/auth_provider.dart';
+import 'features/dashboard/data/repositories/production_dashboard_repository.dart';
 import 'features/dashboard/presentation/dashboard_personalization_provider.dart';
 import 'features/dashboard/presentation/dashboard_provider.dart';
 import 'features/notifications/presentation/notification_provider.dart';
 import 'features/onboarding/presentation/onboarding_provider.dart';
 import 'features/profile/data/repositories/supabase_profile_repository.dart';
+import 'features/profile/domain/models/user_profile.dart';
 import 'features/profile/domain/repositories/profile_repository.dart';
 import 'features/profile/presentation/profile_provider.dart';
 import 'features/storage/presentation/storage_provider.dart';
@@ -28,9 +32,13 @@ import 'features/timetable/presentation/timetable_provider.dart';
 import 'features/calendar/data/repositories/supabase_calendar_repository.dart';
 import 'features/calendar/domain/repositories/calendar_repository.dart';
 import 'features/calendar/presentation/calendar_provider.dart';
-import 'features/attendance/data/repositories/local_attendance_repository.dart';
+import 'features/attendance/data/repositories/supabase_attendance_repository.dart';
 import 'features/attendance/domain/repositories/attendance_repository.dart';
 import 'features/attendance/presentation/attendance_provider.dart';
+import 'features/chat/data/repositories/supabase_chat_repository.dart';
+import 'features/chat/presentation/chat_provider.dart';
+import 'features/resources/data/repositories/supabase_resources_repository.dart';
+import 'features/resources/presentation/resources_provider.dart';
 import 'features/leaderboard/data/repositories/leaderboard_repository.dart';
 import 'features/leaderboard/presentation/leaderboard_provider.dart';
 import 'core/config/app_config_provider.dart';
@@ -61,11 +69,45 @@ void main() async {
     debugPrint('FCM NotificationService initialization warning: $e');
   }
 
-  runApp(const ScholarSyncApp());
+  // 4. Pre-load profile quickly if user session is already cached synchronously
+  UserProfile? initialProfile;
+  try {
+    final currentFirebaseUser = FirebaseAuth.instance.currentUser;
+    if (currentFirebaseUser != null) {
+      initialProfile = await const SupabaseProfileRepository()
+          .getProfile(currentFirebaseUser.uid)
+          .timeout(const Duration(milliseconds: 600), onTimeout: () => null);
+    }
+  } catch (e) {
+    debugPrint('Profile pre-load note: $e');
+  }
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('FLUTTER_ERROR: ${details.exceptionAsString()}\n${details.stack}');
+  };
+
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Container(
+      color: Colors.black,
+      padding: const EdgeInsets.all(20),
+      alignment: Alignment.center,
+      child: SingleChildScrollView(
+        child: SelectableText(
+          '⚠️ UI Rendering Error:\n${details.exceptionAsString()}\n\nStack:\n${details.stack}',
+          style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontFamily: 'monospace'),
+        ),
+      ),
+    );
+  };
+
+  runApp(ScholarSyncApp(initialProfile: initialProfile));
 }
 
 class ScholarSyncApp extends StatelessWidget {
-  const ScholarSyncApp({super.key});
+  const ScholarSyncApp({super.key, this.initialProfile});
+
+  final UserProfile? initialProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -81,13 +123,19 @@ class ScholarSyncApp extends StatelessWidget {
           create: (_) => const SupabaseTimetableRepository(),
         ),
         Provider<AdminRepository>(
-          create: (_) => const SupabaseAdminRepository(),
+          create: (_) => ResilientAdminRepository(),
         ),
         Provider<CalendarRepository>(
           create: (_) => const SupabaseCalendarRepository(),
         ),
         Provider<AttendanceRepository>(
-          create: (_) => const LocalAttendanceRepository(),
+          create: (_) => const SupabaseAttendanceRepository(),
+        ),
+        Provider<ChatRepository>(
+          create: (_) => const SupabaseChatRepository(),
+        ),
+        Provider<ResourcesRepository>(
+          create: (_) => const SupabaseResourcesRepository(),
         ),
         ChangeNotifierProvider<ThemeService>(
           create: (_) => ThemeService(),
@@ -99,7 +147,7 @@ class ScholarSyncApp extends StatelessWidget {
           create: (_) => AuthProvider(),
         ),
         ChangeNotifierProvider<ProfileProvider>(
-          create: (_) => ProfileProvider(),
+          create: (_) => ProfileProvider(initialProfile: initialProfile),
         ),
         ChangeNotifierProvider<StorageProvider>(
           create: (_) => StorageProvider(),
@@ -113,7 +161,13 @@ class ScholarSyncApp extends StatelessWidget {
           ),
         ),
         ChangeNotifierProvider<DashboardProvider>(
-          create: (_) => DashboardProvider(),
+          create: (ctx) => DashboardProvider(
+            repository: ProductionDashboardRepository(
+              timetableRepository: ctx.read<TimetableRepository>(),
+              attendanceRepository: ctx.read<AttendanceRepository>(),
+              calendarRepository: ctx.read<CalendarRepository>(),
+            ),
+          ),
         ),
         ChangeNotifierProvider<DashboardPersonalizationProvider>(
           create: (_) => DashboardPersonalizationProvider(),
@@ -128,10 +182,24 @@ class ScholarSyncApp extends StatelessWidget {
           create: (_) => CalendarProvider(),
         ),
         ChangeNotifierProvider<AttendanceProvider>(
-          create: (_) => AttendanceProvider(),
+          create: (ctx) => AttendanceProvider(
+            repository: ctx.read<AttendanceRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider<ChatProvider>(
+          create: (ctx) => ChatProvider(
+            repository: ctx.read<ChatRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider<ResourcesProvider>(
+          create: (ctx) => ResourcesProvider(
+            repository: ctx.read<ResourcesRepository>(),
+          ),
         ),
         ChangeNotifierProvider<AdminProvider>(
-          create: (_) => AdminProvider(),
+          create: (ctx) => AdminProvider(
+            repository: ctx.read<AdminRepository>(),
+          ),
         ),
         ChangeNotifierProvider<LeaderboardProvider>(
           create: (_) => LeaderboardProvider(
@@ -155,6 +223,16 @@ class _AppView extends StatelessWidget {
       // ── App metadata ───────────────────────────────────────────────────────
       title: 'ScholarSync',
       debugShowCheckedModeBanner: false,
+
+      // ── Drag & Click-to-Scroll on Web / Desktop ────────────────────────────
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: {
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.touch,
+          PointerDeviceKind.trackpad,
+          PointerDeviceKind.stylus,
+        },
+      ),
 
       // ── Themes ────────────────────────────────────────────────────────────
       theme: AppTheme.light,

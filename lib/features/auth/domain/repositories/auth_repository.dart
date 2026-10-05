@@ -31,9 +31,13 @@ abstract class AuthRepository {
   /// Send email verification to current user.
   Future<void> sendEmailVerification();
 
+  /// Reloads the currently authenticated user from the auth provider.
+  Future<AuthUser?> reloadUser();
+
   /// Obtains the Firebase ID Token (JWT).
   Future<String?> getIdToken({bool forceRefresh = false});
 
   /// Sign out the current user.
   Future<void> signOut();
 }
+

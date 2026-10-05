@@ -1,8 +1,8 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../../core/services/notification_service.dart';
 import '../data/repositories/supabase_notification_repository.dart';
 import '../domain/models/user_device.dart';
-import '../domain/repositories/notification_repository.dart';
 
 class NotificationItem {
   const NotificationItem({
@@ -34,40 +34,16 @@ class NotificationItem {
 }
 
 class NotificationProvider extends ChangeNotifier {
-  NotificationProvider({NotificationRepository? repository})
-      : _repository = repository ?? const SupabaseNotificationRepository() {
-    // Initial sample announcements & alerts
-    _notifications = [
-      NotificationItem(
-        id: 'notif-1',
-        title: 'Midterm Examination Schedule Released',
-        body: 'The Spring term exam timetable is now published. Please check your academic portal.',
-        category: 'Announcements',
-        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-      NotificationItem(
-        id: 'notif-2',
-        title: 'Assignment Due Tomorrow: Data Structures',
-        body: 'Submit your Binary Search Tree lab assignment before 11:59 PM.',
-        category: 'Assignments',
-        timestamp: DateTime.now().subtract(const Duration(hours: 5)),
-      ),
-      NotificationItem(
-        id: 'notif-3',
-        title: 'Attendance Warning Alert',
-        body: 'Your attendance in Basic Electrical Engineering is currently at 68%. Maintain at least 75%.',
-        category: 'Attendance',
-        timestamp: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-    ];
-  }
+  NotificationProvider({SupabaseNotificationRepository? repository})
+      : _repository = repository ?? const SupabaseNotificationRepository();
 
-  final NotificationRepository _repository;
+  final SupabaseNotificationRepository _repository;
 
   bool _isLoading = false;
   String? _error;
   List<UserDevice> _userDevices = [];
   List<NotificationItem> _notifications = [];
+  StreamSubscription<List<NotificationItem>>? _notifSubscription;
 
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -112,6 +88,34 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
+  /// Listens to live database notifications for [userId]
+  Future<void> loadNotifications(String userId) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _notifications = await _repository.fetchNotifications(userId);
+      _isLoading = false;
+      notifyListeners();
+
+      await _notifSubscription?.cancel();
+      _notifSubscription = _repository.streamNotifications(userId).listen((liveList) {
+        _notifications = liveList;
+        notifyListeners();
+      });
+    } catch (e) {
+      debugPrint('Error loading notifications: $e');
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> markAllRead(String userId) async {
+    await _repository.markAllAsRead(userId);
+    _notifications = _notifications.map((n) => n.copyWith(isRead: true)).toList();
+    notifyListeners();
+  }
+
   /// Removes current device token from Supabase on sign out.
   Future<void> unregisterCurrentDevice(String firebaseUid) async {
     try {
@@ -134,10 +138,18 @@ class NotificationProvider extends ChangeNotifier {
   }
 
   void clear() {
+    _notifSubscription?.cancel();
+    _notifSubscription = null;
     _userDevices.clear();
     _notifications.clear();
     _error = null;
     _isLoading = false;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _notifSubscription?.cancel();
+    super.dispose();
   }
 }

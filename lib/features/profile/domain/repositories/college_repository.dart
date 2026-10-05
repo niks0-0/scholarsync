@@ -7,4 +7,7 @@ abstract class CollegeRepository {
 
   /// Search colleges by name or code query.
   Future<List<College>> searchColleges(String query);
+
+  /// Create a new college entry in the database.
+  Future<College> createCollege(College college);
 }

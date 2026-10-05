@@ -48,6 +48,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _errorMessage;
 
   bool _initializedFromProfile = false;
+  bool _isEditing = false;
+
+  void _cancelEdit() {
+    setState(() {
+      _isEditing = false;
+      _errorMessage = null;
+      _newAvatarBytes = null;
+      _initializedFromProfile = false;
+    });
+    final profile = context.read<ProfileProvider>().profile;
+    if (profile != null) _populateFields(profile);
+  }
 
   @override
   void initState() {
@@ -195,6 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (mounted) {
         if (saved != null) {
+          setState(() => _isEditing = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Academic Identity Profile updated successfully!'),
@@ -230,7 +243,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
     final auth = context.watch<AuthProvider>();
     final profile = context.watch<ProfileProvider>().profile;
@@ -247,9 +259,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Academic Profile'),
+        title: Text(_isEditing ? 'Edit Academic Profile' : 'Academic Profile'),
         elevation: 0,
         actions: [
+          if (!_isEditing)
+            IconButton(
+              icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
+              tooltip: 'Edit Profile',
+              onPressed: () => setState(() => _isEditing = true),
+            )
+          else
+            TextButton(
+              onPressed: _cancelEdit,
+              child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            ),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.error),
             tooltip: 'Sign Out',
@@ -264,79 +287,456 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppDimensions.spacingLg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Admin Portal Access Banner ──────────────────────────────
-                if (isAdmin)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 20),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.primary.withValues(alpha: 0.2),
-                          AppColors.secondary.withValues(alpha: 0.15),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                      border: Border.all(color: AppColors.primary),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppDimensions.spacingLg),
+          child: _isEditing
+              ? Form(
+                  key: _formKey,
+                  child: _buildProfileEditForm(profile, isAdmin),
+                )
+              : _buildProfileDetailsView(
+                  profile: profile,
+                  email: email,
+                  uid: uid,
+                  provider: provider,
+                  isAdmin: isAdmin,
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminBanner() {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.2),
+            AppColors.secondary.withValues(alpha: 0.15),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        border: Border.all(color: AppColors.primary),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+                ),
+                child: const Icon(Icons.shield_rounded, size: 24, color: AppColors.textPrimary),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ScholarSync Owner Mode Active',
+                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                     ),
-                    child: Column(
+                    Text(
+                      'You have master control over all student accounts, colleges, and broadcasts.',
+                      style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.textPrimary,
+              ),
+              icon: const Icon(Icons.launch_rounded, size: 18),
+              label: const Text('Open Master Console', style: TextStyle(fontWeight: FontWeight.bold)),
+              onPressed: () => context.go('/admin'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileDetailsView({
+    required UserProfile? profile,
+    required String email,
+    required String uid,
+    required String provider,
+    required bool isAdmin,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+    final collegeName = _selectedCollege?.name ??
+        (profile?.collegeId != null && _colleges.isNotEmpty
+            ? _colleges.firstWhere((c) => c.id == profile!.collegeId, orElse: () => _colleges.first).name
+            : (profile?.collegeId ?? 'Not Selected'));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isAdmin) _buildAdminBanner(),
+
+        // ── Avatar & Basic Identity Header ──
+        Center(
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.primary, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: StudentAvatar(
+                  radius: 46,
+                  avatarUrl: profile?.avatarUrl,
+                  name: profile?.fullName ?? 'Student',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                profile?.fullName.isNotEmpty == true ? profile!.fullName : 'ScholarSync Student',
+                style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 20),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                email,
+                style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF94A3B8)),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (isAdmin ? AppColors.primary : const Color(0xFF38BDF8)).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: (isAdmin ? AppColors.primary : const Color(0xFF38BDF8)).withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      (profile?.role.displayName ?? 'Student').toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isAdmin ? AppColors.primary : const Color(0xFF38BDF8),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: profile?.isVerified == true ? AppColors.success.withValues(alpha: 0.15) : const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: profile?.isVerified == true ? AppColors.success.withValues(alpha: 0.4) : const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
-                              ),
-                              child: const Icon(Icons.shield_rounded,
-                                  size: 24, color: AppColors.textPrimary),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'ScholarSync Owner Mode Active',
-                                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                  ),
-                                  Text(
-                                    'You have master control over all student accounts, colleges, and broadcasts.',
-                                    style: textTheme.bodySmall
-                                        ?.copyWith(color: colorScheme.onSurfaceVariant),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        Icon(
+                          profile?.isVerified == true ? Icons.verified_rounded : Icons.pending_rounded,
+                          size: 13,
+                          color: profile?.isVerified == true ? AppColors.success : const Color(0xFFF59E0B),
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.tonalIcon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: AppColors.textPrimary,
-                            ),
-                            icon: const Icon(Icons.launch_rounded, size: 18),
-                            label: const Text('Open Master Console',
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                            onPressed: () => context.go('/admin'),
+                        const SizedBox(width: 4),
+                        Text(
+                          profile?.isVerified == true ? 'VERIFIED' : 'PENDING REVIEW',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: profile?.isVerified == true ? AppColors.success : const Color(0xFFF59E0B),
                           ),
                         ),
                       ],
                     ),
                   ),
+                ],
+              ),
+            ],
+          ),
+        ),
 
-                // Avatar Header & Options Selector
+        const SizedBox(height: 20),
+
+        // ── Active Days Engagement Card ──
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0F231D), Color(0xFF0B1714)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.bolt_rounded, size: 28, color: Color(0xFF10B981)),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ACTIVE DAYS TRACKER',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                        color: Color(0xFF10B981),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${profile?.activeDays ?? 1} Days Logged Active',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      profile?.lastActiveAt != null
+                          ? 'Last active: ${profile!.lastActiveAt!.toLocal().toString().substring(0, 16)}'
+                          : 'Active session currently verified',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // ── Academic Identity Details Card ──
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFF141418),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+            border: Border.all(color: const Color(0xFF27272A)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.school_rounded, size: 18, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Text(
+                        'Academic Identity',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      minimumSize: const Size(0, 30),
+                      side: const BorderSide(color: AppColors.primary),
+                    ),
+                    icon: const Icon(Icons.edit_rounded, size: 14, color: AppColors.primary),
+                    label: const Text('Edit', style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.bold)),
+                    onPressed: () => setState(() => _isEditing = true),
+                  ),
+                ],
+              ),
+              const Divider(color: Color(0xFF27272A), height: 24),
+              _buildDetailTile(
+                icon: Icons.account_balance_rounded,
+                label: 'College / Institute',
+                value: collegeName,
+              ),
+              _buildDetailTile(
+                icon: Icons.category_rounded,
+                label: 'Branch / Program',
+                value: profile?.branch ?? _branch,
+              ),
+              _buildDetailTile(
+                icon: Icons.calendar_today_rounded,
+                label: 'Academic Year',
+                value: profile?.academicYear ?? _academicYear,
+              ),
+              _buildDetailTile(
+                icon: Icons.layers_rounded,
+                label: 'Semester & Division',
+                value: 'Semester ${profile?.semester ?? _semester} • Division ${profile?.division ?? _division}',
+              ),
+              _buildDetailTile(
+                icon: Icons.badge_outlined,
+                label: 'Roll Number',
+                value: profile?.rollNumber ?? 'Not assigned',
+              ),
+              _buildDetailTile(
+                icon: Icons.fingerprint_rounded,
+                label: 'Enrollment / Student ID',
+                value: profile?.enrollmentNumber ?? 'Not assigned',
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // ── Account & Security Card ──
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFF141418),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+            border: Border.all(color: const Color(0xFF27272A)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.lock_rounded, size: 18, color: Color(0xFF818CF8)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Account & Credentials',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ],
+              ),
+              const Divider(color: Color(0xFF27272A), height: 24),
+              _buildDetailTile(
+                icon: Icons.email_rounded,
+                label: 'Sign-in Email',
+                value: email,
+                iconColor: const Color(0xFF818CF8),
+              ),
+              _buildDetailTile(
+                icon: Icons.verified_user_rounded,
+                label: 'Authentication Provider',
+                value: provider == 'google.com' ? 'Google Authentication' : 'Email & Password',
+                iconColor: const Color(0xFF818CF8),
+              ),
+              _buildDetailTile(
+                icon: Icons.key_rounded,
+                label: 'Firebase UID',
+                value: uid,
+                iconColor: const Color(0xFF818CF8),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // ── Edit Button at Bottom ──
+        SizedBox(
+          width: double.infinity,
+          height: AppDimensions.buttonHeightLg,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusLg)),
+            ),
+            icon: const Icon(Icons.edit_rounded, size: 20),
+            label: const Text(
+              'Edit Profile Information',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+            ),
+            onPressed: () => setState(() => _isEditing = true),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailTile({
+    required IconData icon,
+    required String label,
+    required String value,
+    Color? iconColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: (iconColor ?? AppColors.primary).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: iconColor ?? AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF94A3B8),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value.isNotEmpty ? value : 'Not Specified',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileEditForm(UserProfile? profile, bool isAdmin) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    final email = profile?.email ?? '';
+    final uid = profile?.id ?? '';
+    final provider = profile?.authProvider ?? 'google.com';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isAdmin) _buildAdminBanner(),
+
+        // Avatar Header & Options Selector
                 Center(
                   child: Column(
                     children: [
@@ -955,17 +1355,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: AppDimensions.spacingXxxl),
 
-                PrimaryButton(
-                  label: 'Save Academic Profile',
-                  isLoading: _isSaving,
-                  onPressed: _saveProfile,
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: Color(0xFF3F3F46)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                          ),
+                        ),
+                        onPressed: _cancelEdit,
+                        child: const Text('Cancel', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: PrimaryButton(
+                        label: 'Save Changes',
+                        isLoading: _isSaving,
+                        onPressed: _saveProfile,
+                      ),
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
+            );
   }
 
   Widget _buildProfileAvatarChip({

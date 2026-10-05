@@ -24,6 +24,8 @@ class UserProfile {
     this.verificationStatus = 'pending_verification',
     this.collegeIdCardUrl,
     this.legalAcceptedAt,
+    this.activeDays = 1,
+    this.lastActiveAt,
     this.createdAt,
     this.updatedAt,
   });
@@ -89,6 +91,12 @@ class UserProfile {
   /// Administrators are automatically verified.
   bool get isVerified => verificationStatus == 'verified' || role.isAdmin;
 
+  /// Number of active days logged on ScholarSync.
+  final int activeDays;
+
+  /// Timestamp of the last active session.
+  final DateTime? lastActiveAt;
+
   /// Creation timestamp.
   final DateTime? createdAt;
 
@@ -120,6 +128,10 @@ class UserProfile {
       legalAcceptedAt: json['legal_accepted_at'] != null
           ? DateTime.tryParse(json['legal_accepted_at'] as String)
           : null,
+      activeDays: (json['active_days'] as int?) ?? 1,
+      lastActiveAt: json['last_active_at'] != null
+          ? DateTime.tryParse(json['last_active_at'] as String)
+          : null,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
@@ -150,6 +162,8 @@ class UserProfile {
       'verification_status': verificationStatus,
       'college_id_card_url': collegeIdCardUrl,
       'legal_accepted_at': legalAcceptedAt?.toIso8601String(),
+      'active_days': activeDays,
+      'last_active_at': lastActiveAt?.toIso8601String(),
     };
   }
 
@@ -172,6 +186,8 @@ class UserProfile {
     String? verificationStatus,
     String? collegeIdCardUrl,
     DateTime? legalAcceptedAt,
+    int? activeDays,
+    DateTime? lastActiveAt,
   }) {
     return UserProfile(
       id: id,
@@ -193,6 +209,8 @@ class UserProfile {
       verificationStatus: verificationStatus ?? this.verificationStatus,
       collegeIdCardUrl: collegeIdCardUrl ?? this.collegeIdCardUrl,
       legalAcceptedAt: legalAcceptedAt ?? this.legalAcceptedAt,
+      activeDays: activeDays ?? this.activeDays,
+      lastActiveAt: lastActiveAt ?? this.lastActiveAt,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

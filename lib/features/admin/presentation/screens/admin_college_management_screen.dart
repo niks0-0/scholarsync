@@ -58,12 +58,15 @@ class AdminCollegeManagementScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openAddEditCollegeModal(context),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textPrimary,
-        icon: const Icon(Icons.domain_add_rounded),
-        label: const Text('Add College', style: TextStyle(fontWeight: FontWeight.bold)),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: FloatingActionButton(
+          onPressed: () => _openAddEditCollegeModal(context),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.black,
+          tooltip: 'Add College',
+          child: const Icon(Icons.add_rounded, size: 28),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

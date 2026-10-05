@@ -97,6 +97,14 @@ class _AdminStudentsScreenState extends State<AdminStudentsScreen> {
             Text('Semester: Semester ${student.semester ?? 1}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
             Text('Division: ${student.division ?? 'A'}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
             Text('Email: ${student.email}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFF10B981)),
+                const SizedBox(width: 4),
+                Text('Active Days: ${student.activeDays} days recorded', style: const TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.bold)),
+              ],
+            ),
           ],
         ),
         actions: [
@@ -199,6 +207,218 @@ class _AdminStudentsScreenState extends State<AdminStudentsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _openEditStudentDialog(BuildContext context, UserProfile student) {
+
+    final nameController = TextEditingController(text: student.fullName);
+    final emailController = TextEditingController(text: student.email);
+    final rollController = TextEditingController(text: student.rollNumber ?? '');
+    final enrollController = TextEditingController(text: student.enrollmentNumber ?? '');
+    String selectedBranch = student.branch ?? 'Computer Science & Engineering';
+    int selectedSemester = student.semester ?? 1;
+    String selectedStatus = student.verificationStatus;
+    UserRole selectedRole = student.role;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          backgroundColor: const Color(0xFF141418),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+            side: const BorderSide(color: Color(0xFF27272A)),
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.edit_note_rounded, color: AppColors.primary, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Edit: ${student.fullName}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Full Name *'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'Email Address *'),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: ['Computer Science & Engineering', 'Information Technology', 'Electronics & Communication', 'Mechanical Engineering'].contains(selectedBranch)
+                            ? selectedBranch
+                            : 'Computer Science & Engineering',
+                        decoration: const InputDecoration(labelText: 'Branch', contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
+                        items: const [
+                          DropdownMenuItem(value: 'Computer Science & Engineering', child: Text('CSE / MCA', overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'Information Technology', child: Text('IT', overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'Electronics & Communication', child: Text('ECE', overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'Mechanical Engineering', child: Text('MECH', overflow: TextOverflow.ellipsis)),
+                        ],
+                        onChanged: (v) => setModalState(() => selectedBranch = v ?? selectedBranch),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 90,
+                      child: DropdownButtonFormField<int>(
+                        initialValue: selectedSemester,
+                        decoration: const InputDecoration(labelText: 'Semester', contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
+                        items: List.generate(8, (i) => i + 1)
+                            .map((s) => DropdownMenuItem(value: s, child: Text('Sem $s')))
+                            .toList(),
+                        onChanged: (v) => setModalState(() => selectedSemester = v ?? 1),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: rollController,
+                        decoration: const InputDecoration(labelText: 'Roll No'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: enrollController,
+                        decoration: const InputDecoration(labelText: 'Enrollment ID'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedStatus,
+                  decoration: const InputDecoration(labelText: 'Verification Status'),
+                  items: const [
+                    DropdownMenuItem(value: 'verified', child: Text('Verified')),
+                    DropdownMenuItem(value: 'pending_verification', child: Text('Pending Review')),
+                    DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+                  ],
+                  onChanged: (v) => setModalState(() => selectedStatus = v ?? selectedStatus),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.save_rounded, size: 16),
+              label: const Text('Save Changes'),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              onPressed: () async {
+                final name = nameController.text.trim();
+                final email = emailController.text.trim();
+                if (name.isEmpty || email.isEmpty) return;
+
+                Navigator.pop(ctx);
+                final updatedProfile = student.copyWith(
+                  fullName: name,
+                  email: email,
+                  branch: selectedBranch,
+                  semester: selectedSemester,
+                  rollNumber: rollController.text.trim().isNotEmpty ? rollController.text.trim() : null,
+                  enrollmentNumber: enrollController.text.trim().isNotEmpty ? enrollController.text.trim() : null,
+                  verificationStatus: selectedStatus,
+                  role: selectedRole,
+                );
+
+                final success = await context.read<AdminProvider>().updateStudentProfile(updatedProfile);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success ? 'User updated in database successfully!' : 'Failed to update user.'),
+                      backgroundColor: success ? AppColors.success : AppColors.error,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteStudentDialog(BuildContext context, UserProfile student) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141418),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+          side: const BorderSide(color: Color(0xFF27272A)),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever_rounded, color: AppColors.error, size: 22),
+            SizedBox(width: 8),
+            Text('Remove User Account', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete ${student.fullName} (${student.email})?',
+              style: const TextStyle(color: Colors.white, fontSize: 13.5),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'This will purge their user record from the database so they can register again with fresh credentials without conflict.',
+              style: TextStyle(color: Colors.white54, fontSize: 11.5, height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final success = await context.read<AdminProvider>().deleteStudentProfile(student.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success ? 'User "${student.fullName}" removed from database.' : 'Failed to remove user.'),
+                    backgroundColor: success ? AppColors.success : AppColors.error,
+                  ),
+                );
+              }
+            },
+            child: const Text('Delete Account', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
@@ -374,12 +594,12 @@ class _AdminStudentsScreenState extends State<AdminStudentsScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.black,
-        icon: const Icon(Icons.person_add_rounded),
-        label: const Text('Add Student', style: TextStyle(fontWeight: FontWeight.bold)),
+        tooltip: 'Add Student',
         onPressed: () => _openCreateStudentDialog(context),
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -725,6 +945,27 @@ class _AdminStudentsScreenState extends State<AdminStudentsScreen> {
                                                       fontSize: 10, color: Color(0xFF94A3B8)),
                                                 ),
                                               ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.bolt_rounded, size: 11, color: Color(0xFF10B981)),
+                                                  const SizedBox(width: 2),
+                                                  Text(
+                                                    '${student.activeDays}d Active',
+                                                    style: const TextStyle(
+                                                        fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ],
                                         ),
                                         if (student.verificationStatus == 'pending_verification' || student.collegeIdCardUrl != null) ...[
@@ -769,28 +1010,32 @@ class _AdminStudentsScreenState extends State<AdminStudentsScreen> {
                                   PopupMenuButton<String>(
                                     icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
                                     onSelected: (val) async {
-                                      if (val == 'role') {
+                                      if (val == 'edit') {
+                                        _openEditStudentDialog(context, student);
+                                      } else if (val == 'role') {
                                         _openRoleDialog(context, student);
                                       } else if (val == 'suspend') {
                                         await admin.toggleUserSuspension(student.id, !student.isSuspended);
                                       } else if (val == 'delete') {
-                                        final success = await admin.deleteStudentProfile(student.id);
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(success ? 'Student record removed.' : 'Failed to delete record.'),
-                                              backgroundColor: success ? AppColors.success : AppColors.error,
-                                            ),
-                                          );
-                                        }
+                                        _confirmDeleteStudentDialog(context, student);
                                       }
                                     },
                                     itemBuilder: (ctx) => [
                                       const PopupMenuItem(
+                                        value: 'edit',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.edit_note_rounded, color: AppColors.primary, size: 18),
+                                            SizedBox(width: 8),
+                                            Text('Edit Student'),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
                                         value: 'role',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.manage_accounts_rounded, color: AppColors.primary, size: 18),
+                                            Icon(Icons.manage_accounts_rounded, color: Colors.white70, size: 18),
                                             SizedBox(width: 8),
                                             Text('Change Role'),
                                           ],
@@ -818,13 +1063,14 @@ class _AdminStudentsScreenState extends State<AdminStudentsScreen> {
                                             children: [
                                               Icon(Icons.delete_outline, color: AppColors.error, size: 18),
                                               SizedBox(width: 8),
-                                              Text('Delete Record', style: TextStyle(color: AppColors.error)),
+                                              Text('Delete Account', style: TextStyle(color: AppColors.error)),
                                             ],
                                           ),
                                         ),
                                       ],
                                     ],
                                   ),
+
                                 ],
                               ),
                             );

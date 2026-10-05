@@ -100,15 +100,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: _showAddEventSheet,
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.black,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'Add Event',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
+        tooltip: 'Add Event',
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: SafeArea(
         child: RefreshIndicator(

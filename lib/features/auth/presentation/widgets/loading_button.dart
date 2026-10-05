@@ -94,11 +94,15 @@ class _LoadingButtonState extends State<LoadingButton>
                         Icon(widget.icon, size: AppDimensions.buttonIconSize),
                         const SizedBox(width: AppDimensions.spacingSm),
                       ],
-                      Text(
-                        widget.label,
-                        style: textTheme.labelLarge?.copyWith(
-                          color: AppColors.textOnPrimary,
-                          fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: Text(
+                          widget.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.labelLarge?.copyWith(
+                            color: AppColors.textOnPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],

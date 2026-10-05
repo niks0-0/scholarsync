@@ -44,6 +44,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     if (path.startsWith('/admin/community')) return 10;
     if (path.startsWith('/admin/announcements')) return 11;
     if (path.startsWith('/admin/students')) return 12;
+    if (path.startsWith('/admin/backup')) return 13;
     return 0;
   }
 
@@ -87,6 +88,9 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
         break;
       case 12:
         context.go('/admin/students');
+        break;
+      case 13:
+        context.go('/admin/backup');
         break;
     }
   }
@@ -271,6 +275,11 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                             selectedIcon: Icon(Icons.people_rounded),
                             label: Text('Students'),
                           ),
+                          const NavigationRailDestination(
+                            icon: Icon(Icons.settings_backup_restore_outlined),
+                            selectedIcon: Icon(Icons.settings_backup_restore_rounded),
+                            label: Text('Disaster Recovery'),
+                          ),
                         ],
                       ),
                     ),
@@ -290,6 +299,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             backgroundColor: colorScheme.surface,
             elevation: 0,
             title: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   padding: const EdgeInsets.all(6),
@@ -300,20 +310,20 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   child: const Icon(Icons.shield_rounded, size: 18, color: AppColors.textPrimary),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'ScholarSync Admin',
-                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                Flexible(
+                  child: Text(
+                    'ScholarSync Admin',
+                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
             actions: [
-              TextButton.icon(
-                icon: const Icon(Icons.school_outlined, size: 16),
-                label: const Text('Student View'),
-                style: TextButton.styleFrom(
-                  foregroundColor: colorScheme.primary,
-                  textStyle: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
+              IconButton(
+                icon: const Icon(Icons.school_outlined, size: 20),
+                color: colorScheme.primary,
+                tooltip: 'Student View',
                 onPressed: () => context.go('/home'),
               ),
               IconButton(
@@ -474,6 +484,15 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   onTap: () {
                     Navigator.pop(context);
                     context.go('/admin/students');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings_backup_restore_rounded, color: AppColors.secondary),
+                  title: const Text('Disaster Recovery & Snapshots'),
+                  selected: selectedIndex == 13,
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.go('/admin/backup');
                   },
                 ),
                 const Divider(),

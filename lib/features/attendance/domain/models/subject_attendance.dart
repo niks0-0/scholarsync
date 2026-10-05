@@ -26,8 +26,9 @@ class SubjectAttendance {
 
   /// How many classes can be safely skipped while staying >= targetPercentage (e.g. 75%)
   int get safeBunksCount {
-    if (!isSafe || totalClasses == 0) return 0;
+    if (!isSafe || totalClasses == 0 || targetPercentage <= 0) return 0;
     final maxTotal = attendedClasses / (targetPercentage / 100.0);
+    if (maxTotal.isNaN || maxTotal.isInfinite) return 0;
     final diff = (maxTotal - totalClasses).floor();
     return diff < 0 ? 0 : diff;
   }

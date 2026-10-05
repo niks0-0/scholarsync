@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/auth_provider.dart';
 import '../notification_provider.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
@@ -17,6 +19,17 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   final categories = ['All', 'Assignments', 'Attendance', 'Calendar', 'Community', 'Announcements', 'System'];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AuthProvider>().currentUser;
+      if (user != null) {
+        context.read<NotificationProvider>().loadNotifications(user.uid);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
@@ -25,13 +38,29 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
         title: const Text('Notification Center'),
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all_rounded),
             tooltip: 'Mark All Read',
-            onPressed: () => notifProvider.clearNotifications(),
+            onPressed: () {
+              final user = context.read<AuthProvider>().currentUser;
+              if (user != null) {
+                notifProvider.markAllRead(user.uid);
+              }
+            },
           ),
         ],
       ),

@@ -146,11 +146,12 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _openAddEventDialog(context),
         backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.event_available_rounded, color: Colors.black),
-        label: const Text('Add Date', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        foregroundColor: Colors.black,
+        tooltip: 'Add Date',
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

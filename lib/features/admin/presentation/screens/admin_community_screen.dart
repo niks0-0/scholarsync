@@ -150,12 +150,12 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF38BDF8),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.black,
-        icon: const Icon(Icons.add_comment_rounded),
-        label: const Text('New Post', style: TextStyle(fontWeight: FontWeight.bold)),
+        tooltip: 'New Post',
         onPressed: () => _openCreatePostDialog(context),
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

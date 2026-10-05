@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../academic_catalog/presentation/academic_catalog_provider.dart';
 import '../../../auth/auth_provider.dart';
@@ -12,6 +14,8 @@ import '../timetable_provider.dart';
 import '../widgets/add_edit_class_sheet.dart';
 import '../widgets/class_detail_modal.dart';
 import '../widgets/timetable_class_card.dart';
+
+import '../widgets/upload_timetable_sheet.dart';
 
 class TimetableScreen extends StatefulWidget {
   const TimetableScreen({super.key});
@@ -64,6 +68,15 @@ class _TimetableScreenState extends State<TimetableScreen> {
     );
   }
 
+  void _showUploadTimetableSheet(BuildContext context, String uid) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => UploadTimetableSheet(firebaseUid: uid),
+    );
+  }
+
   void _showClassDetailModal(BuildContext context, TimetableEntry entry, String uid) {
     showModalBottomSheet(
       context: context,
@@ -88,12 +101,12 @@ class _TimetableScreenState extends State<TimetableScreen> {
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddClassSheet(context, uid),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Class'),
+        foregroundColor: Colors.black,
+        tooltip: 'Add Class',
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: SafeArea(
         child: Padding(
@@ -104,6 +117,18 @@ class _TimetableScreenState extends State<TimetableScreen> {
               // Header Title
               Row(
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    tooltip: 'Back',
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/home');
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 4),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,6 +149,11 @@ class _TimetableScreenState extends State<TimetableScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.file_upload_outlined),
+                    tooltip: 'Upload / Import Timetable',
+                    onPressed: () => _showUploadTimetableSheet(context, uid),
                   ),
                   IconButton(
                     icon: const Icon(Icons.refresh_rounded),
@@ -147,6 +177,10 @@ class _TimetableScreenState extends State<TimetableScreen> {
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         label: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -195,7 +229,39 @@ class _TimetableScreenState extends State<TimetableScreen> {
                 ),
               ),
 
-              const SizedBox(height: AppDimensions.spacingMd),
+              const SizedBox(height: AppDimensions.spacingSm),
+
+              // Quick Banner: Mark Today's Attendance
+              InkWell(
+                onTap: () => context.go(AppRoutes.attendance),
+                borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.fact_check_outlined, size: 18, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Mark Today's Attendance as per Schedule",
+                          style: textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: AppDimensions.spacingSm),
 
               // Search Bar
               AppTextField(
@@ -225,24 +291,43 @@ class _TimetableScreenState extends State<TimetableScreen> {
                           )
                         : daySchedule.isEmpty
                             ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.event_seat_outlined, size: 48, color: colorScheme.onSurfaceVariant),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'No classes scheduled for this day.',
-                                      style: textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: colorScheme.onSurface,
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.event_seat_outlined, size: 48, color: colorScheme.onSurfaceVariant),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'No classes scheduled for this day.',
+                                        style: textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: colorScheme.onSurface,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Tap "+ Add Class" to set up your schedule.',
-                                      style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Add classes manually or upload a timetable.',
+                                        style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          OutlinedButton.icon(
+                                            onPressed: () => _showUploadTimetableSheet(context, uid),
+                                            icon: const Icon(Icons.file_upload_outlined, size: 16),
+                                            label: const Text('Upload'),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          ElevatedButton.icon(
+                                            onPressed: () => _showAddClassSheet(context, uid),
+                                            icon: const Icon(Icons.add, size: 16),
+                                            label: const Text('Add Class'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               )
                             : ListView.separated(

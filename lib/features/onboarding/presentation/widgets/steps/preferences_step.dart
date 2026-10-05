@@ -40,13 +40,18 @@ class PreferencesStep extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Application Preferences',
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Application Preferences',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.recommended),
             ],
           ),
@@ -74,26 +79,33 @@ class PreferencesStep extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.notifications_active_rounded, color: AppColors.primary, size: 20),
                           ),
-                          child: const Icon(Icons.notifications_active_rounded, color: AppColors.primary, size: 20),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Push Notifications',
-                          style: textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.onSurface,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Push Notifications',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Switch.adaptive(
                       value: onboarding.notificationsEnabled,
                       activeTrackColor: AppColors.primary,
@@ -140,13 +152,18 @@ class PreferencesStep extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Class & Assignment Reminder Window',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Class & Assignment Reminder Window',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.recommended),
             ],
           ),
@@ -175,53 +192,52 @@ class PreferencesStep extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Application Appearance Theme',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Application Appearance Theme',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.optional),
             ],
           ),
           const SizedBox(height: AppDimensions.spacingSm),
-          Row(
+          Wrap(
+            spacing: AppDimensions.spacingSm,
+            runSpacing: AppDimensions.spacingSm,
             children: [
-              Expanded(
-                child: ChoiceChip(
-                  avatar: const Icon(Icons.brightness_auto_rounded, size: 18),
-                  label: const Text('System'),
-                  selected: themeService.mode == ThemeMode.system,
-                  onSelected: (_) {
-                    themeService.setThemeMode(ThemeMode.system);
-                    onboarding.setThemePreference('System');
-                  },
-                ),
+              ChoiceChip(
+                avatar: const Icon(Icons.brightness_auto_rounded, size: 18),
+                label: const Text('System'),
+                selected: themeService.mode == ThemeMode.system,
+                onSelected: (_) {
+                  themeService.setThemeMode(ThemeMode.system);
+                  onboarding.setThemePreference('System');
+                },
               ),
-              const SizedBox(width: AppDimensions.spacingSm),
-              Expanded(
-                child: ChoiceChip(
-                  avatar: const Icon(Icons.light_mode_rounded, size: 18),
-                  label: const Text('Light'),
-                  selected: themeService.mode == ThemeMode.light,
-                  onSelected: (_) {
-                    themeService.setThemeMode(ThemeMode.light);
-                    onboarding.setThemePreference('Light');
-                  },
-                ),
+              ChoiceChip(
+                avatar: const Icon(Icons.light_mode_rounded, size: 18),
+                label: const Text('Light'),
+                selected: themeService.mode == ThemeMode.light,
+                onSelected: (_) {
+                  themeService.setThemeMode(ThemeMode.light);
+                  onboarding.setThemePreference('Light');
+                },
               ),
-              const SizedBox(width: AppDimensions.spacingSm),
-              Expanded(
-                child: ChoiceChip(
-                  avatar: const Icon(Icons.dark_mode_rounded, size: 18),
-                  label: const Text('Dark'),
-                  selected: themeService.mode == ThemeMode.dark,
-                  onSelected: (_) {
-                    themeService.setThemeMode(ThemeMode.dark);
-                    onboarding.setThemePreference('Dark');
-                  },
-                ),
+              ChoiceChip(
+                avatar: const Icon(Icons.dark_mode_rounded, size: 18),
+                label: const Text('Dark'),
+                selected: themeService.mode == ThemeMode.dark,
+                onSelected: (_) {
+                  themeService.setThemeMode(ThemeMode.dark);
+                  onboarding.setThemePreference('Dark');
+                },
               ),
             ],
           ),

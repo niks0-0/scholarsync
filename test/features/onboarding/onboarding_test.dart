@@ -11,8 +11,8 @@ import 'package:scholarsync/features/profile/domain/repositories/profile_reposit
 import 'package:scholarsync/features/storage/domain/repositories/storage_repository.dart';
 
 class MockCollegeRepository implements CollegeRepository {
-  final List<College> sampleColleges = const [
-    College(
+  final List<College> sampleColleges = [
+    const College(
       id: 'col-1',
       name: 'L.D. College of Engineering',
       code: 'LDCE',
@@ -42,6 +42,12 @@ class MockCollegeRepository implements CollegeRepository {
     return sampleColleges
         .where((c) => c.name.toLowerCase().contains(query.toLowerCase()))
         .toList();
+  }
+
+  @override
+  Future<College> createCollege(College college) async {
+    sampleColleges.add(college);
+    return college;
   }
 }
 
@@ -274,6 +280,33 @@ void main() {
       expect(onboardingProvider.error, isNull);
     });
 
+    test('Validation fails on Step 1 if manual college is enabled but name is empty', () {
+      onboardingProvider.setIsManualCollege(true);
+      onboardingProvider.setManualCollegeName('');
+      final isValid = onboardingProvider.validateStep(1);
+      expect(isValid, isFalse);
+      expect(onboardingProvider.error, contains('enter your college name'));
+    });
+
+    test('Validation passes on Step 1 when manual college name is provided', () {
+      onboardingProvider.setManualCollege(name: 'IIT Bombay', code: 'IITB');
+      final isValid = onboardingProvider.validateStep(1);
+      expect(isValid, isTrue);
+      expect(onboardingProvider.error, isNull);
+      expect(onboardingProvider.isManualCollege, isTrue);
+      expect(onboardingProvider.manualCollegeName, equals('IIT Bombay'));
+      expect(onboardingProvider.manualCollegeCode, equals('IITB'));
+    });
+
+    test('Step navigation sequence works properly with manual college', () {
+      onboardingProvider.setFullName('Jane Scholar');
+      onboardingProvider.setManualCollege(name: 'Government Engineering College');
+
+      expect(onboardingProvider.nextStep(), isTrue); // step 0 -> 1
+      expect(onboardingProvider.nextStep(), isTrue); // step 1 -> 2
+      expect(onboardingProvider.currentStep, equals(2));
+    });
+
     test('Step navigation sequence works properly', () {
       onboardingProvider.setFullName('John Student');
       onboardingProvider.setSelectedCollege(mockCollegeRepo.sampleColleges.first);
@@ -310,6 +343,31 @@ void main() {
       expect(result.branch, equals('Computer Science & Engineering'));
       expect(result.semester, equals(4));
       expect(result.division, equals('A'));
+      expect(onboardingProvider.status, equals(OnboardingStepStatus.success));
+    });
+
+    test('Successful profile onboarding completion with manual college creates college and sets onboarding_completed = true', () async {
+      final initialProfile = const UserProfile(
+        id: 'test_uid_456',
+        email: 'jane@example.com',
+        fullName: 'Jane Scholar',
+      );
+
+      onboardingProvider.init(initialProfile);
+      onboardingProvider.setManualCollege(name: 'National Institute of Technology', code: 'NIT');
+      onboardingProvider.setBranch('Information Technology');
+      onboardingProvider.setSemester(2);
+      onboardingProvider.setDivision('B');
+
+      final result = await onboardingProvider.completeOnboarding(
+        currentProfile: initialProfile,
+        profileRepository: mockProfileRepo,
+      );
+
+      expect(result, isNotNull);
+      expect(result!.onboardingCompleted, isTrue);
+      expect(result.collegeId, isNotNull);
+      expect(onboardingProvider.selectedCollege?.name, equals('National Institute of Technology'));
       expect(onboardingProvider.status, equals(OnboardingStepStatus.success));
     });
 

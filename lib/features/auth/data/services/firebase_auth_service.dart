@@ -139,7 +139,7 @@ class FirebaseAuthService {
   }) async {
     final rawInput = email.trim().toLowerCase();
     final cleanEmail = rawInput.contains('@') ? rawInput : '$rawInput@scholarsync.com';
-    final isDemoAdmin = cleanEmail == 'admin@scholarsync.com' && password == 'adminss123';
+    final isDemoAdmin = cleanEmail == 'admin@scholarsync.com' && (password == 'adminss123' || password == 'Admin@123456');
     final isDemoStudent = cleanEmail == 'student@scholarsync.com' && password == 'studentss123';
 
     try {

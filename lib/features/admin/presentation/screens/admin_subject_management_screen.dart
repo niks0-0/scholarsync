@@ -86,12 +86,15 @@ class _AdminSubjectManagementScreenState extends State<AdminSubjectManagementScr
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openAddEditSubjectModal(),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textPrimary,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Subject', style: TextStyle(fontWeight: FontWeight.bold)),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: FloatingActionButton(
+          onPressed: () => _openAddEditSubjectModal(),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.black,
+          tooltip: 'Add Subject',
+          child: const Icon(Icons.add_rounded, size: 28),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

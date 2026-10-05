@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
+import '../../../core/services/supabase_service.dart';
 import 'package:scholarsync/features/academic_catalog/domain/models/subject.dart';
 import 'package:scholarsync/features/profile/domain/models/college.dart';
 import 'package:scholarsync/features/profile/domain/models/user_profile.dart';
 import 'package:scholarsync/features/profile/domain/models/user_role.dart';
-import '../data/repositories/supabase_admin_repository.dart';
 import '../domain/models/admin_analytics.dart';
 import '../domain/models/announcement.dart';
 import '../domain/models/study_note.dart';
@@ -17,13 +17,14 @@ import '../domain/models/marketplace_listing.dart';
 import '../domain/models/student_club.dart';
 import '../domain/models/community_post.dart';
 import '../domain/models/moderation_context.dart';
+import '../data/repositories/resilient_admin_repository.dart';
 import '../domain/models/chat_member.dart';
 import '../domain/repositories/admin_repository.dart';
 
 /// State Notifier managing administrative operations, moderation, and dashboard state.
 class AdminProvider extends ChangeNotifier {
   AdminProvider({AdminRepository? repository})
-      : _repository = repository ?? const SupabaseAdminRepository();
+      : _repository = repository ?? ResilientAdminRepository();
 
   final AdminRepository _repository;
 
@@ -39,6 +40,7 @@ class AdminProvider extends ChangeNotifier {
 
   // Phase 3 State
   List<ChatRoom> _chatRooms = [];
+  List<Map<String, dynamic>> _pendingRoomRequests = [];
   List<ChatMessage> _activeRoomMessages = [];
   List<AcademicCalendarEvent> _calendarEvents = [];
   List<CampusEvent> _campusEvents = [];
@@ -67,6 +69,7 @@ class AdminProvider extends ChangeNotifier {
   List<AuditLogEntry> get auditLogs => _auditLogs;
 
   List<ChatRoom> get chatRooms => _chatRooms;
+  List<Map<String, dynamic>> get pendingRoomRequests => _pendingRoomRequests;
   List<ChatMessage> get activeRoomMessages => _activeRoomMessages;
   List<AcademicCalendarEvent> get calendarEvents => _calendarEvents;
   List<CampusEvent> get campusEvents => _campusEvents;
@@ -145,12 +148,41 @@ class AdminProvider extends ChangeNotifier {
         loadClubs(),
         loadCommunityPosts(),
       ]);
+      _syncAnalyticsWithLoadedData();
     } catch (e) {
       _errorMessage = 'Failed to load master console data: $e';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void _syncAnalyticsWithLoadedData() {
+    final Map<String, int> branchCounts = {};
+    final Map<int, int> semesterCounts = {};
+    for (final s in _students) {
+      final b = s.branch?.trim();
+      if (b != null && b.isNotEmpty) {
+        branchCounts[b] = (branchCounts[b] ?? 0) + 1;
+      }
+      final sem = s.semester;
+      if (sem != null && sem > 0) {
+        semesterCounts[sem] = (semesterCounts[sem] ?? 0) + 1;
+      }
+    }
+
+    _analytics = AdminAnalytics(
+      totalStudents: _students.length,
+      activeStudents: _students.where((s) => !s.isSuspended).length,
+      totalSubjects: _subjects.isNotEmpty ? _subjects.length : _analytics.totalSubjects,
+      totalColleges: _colleges.isNotEmpty ? _colleges.length : _analytics.totalColleges,
+      totalAnnouncements: _announcements.isNotEmpty ? _announcements.length : _analytics.totalAnnouncements,
+      pendingNotes: _notes.where((n) => n.status == 'pending').length,
+      pendingReports: _reports.where((r) => r.status == 'pending').length,
+      studentsByBranch: branchCounts.isNotEmpty ? branchCounts : _analytics.studentsByBranch,
+      studentsBySemester: semesterCounts.isNotEmpty ? semesterCounts : _analytics.studentsBySemester,
+      recentRegistrations: _students.take(10).toList(),
+    );
   }
 
   Future<void> loadAnalytics() async {
@@ -394,6 +426,22 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateStudentProfile(UserProfile profile) async {
+    try {
+      final updated = await _repository.updateStudentProfile(profile);
+      final index = _students.indexWhere((s) => s.id == profile.id);
+      if (index != -1) {
+        _students[index] = updated;
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to update student profile: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> deleteStudentProfile(String userId) async {
     try {
       await _repository.deleteStudentProfile(userId);
@@ -406,6 +454,7 @@ class AdminProvider extends ChangeNotifier {
       return false;
     }
   }
+
 
   Future<void> loadNotes() async {
     try {
@@ -503,9 +552,59 @@ class AdminProvider extends ChangeNotifier {
   Future<void> loadChatRooms({String? type}) async {
     try {
       _chatRooms = await _repository.fetchChatRooms(type: type);
+      await loadPendingRoomRequests();
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading chat rooms: $e');
+    }
+  }
+
+  Future<void> loadPendingRoomRequests() async {
+    try {
+      final res = await SupabaseService.instance.client
+          .from('chatroom_creation_requests')
+          .select()
+          .eq('status', 'pending')
+          .order('created_at', ascending: false);
+      if (res is List) {
+        _pendingRoomRequests = List<Map<String, dynamic>>.from(res);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading pending room requests: $e');
+    }
+  }
+
+  Future<bool> approveRoomRequest(String requestId, String reviewerId, {String? remarks}) async {
+    try {
+      await SupabaseService.instance.client.rpc('approve_chatroom_request', params: {
+        'p_request_id': requestId,
+        'p_reviewer_id': reviewerId,
+        'p_reviewer_remarks': remarks,
+      });
+      _pendingRoomRequests.removeWhere((r) => r['id'] == requestId);
+      await loadChatRooms();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error approving room request: $e');
+      return false;
+    }
+  }
+
+  Future<bool> rejectRoomRequest(String requestId, String reviewerId, String remarks) async {
+    try {
+      await SupabaseService.instance.client.rpc('reject_chatroom_request', params: {
+        'p_request_id': requestId,
+        'p_reviewer_id': reviewerId,
+        'p_reviewer_remarks': remarks,
+      });
+      _pendingRoomRequests.removeWhere((r) => r['id'] == requestId);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error rejecting room request: $e');
+      return false;
     }
   }
 

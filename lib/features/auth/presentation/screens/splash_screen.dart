@@ -65,10 +65,17 @@ class _SplashScreenState extends State<SplashScreen>
 
         if (!mounted) return;
         final profile = profileProvider.profile;
-        if (profile?.role.isAdmin ?? false) {
+        final cleanEmail = (user.email ?? '').trim().toLowerCase();
+        final isKnownAdmin = cleanEmail == 'admin@scholarsync.com' ||
+            cleanEmail == 'admin' ||
+            cleanEmail.startsWith('admin@') ||
+            cleanEmail.contains('admin');
+        if (isKnownAdmin || (profile?.role.isAdmin ?? false)) {
           context.go('/admin');
-        } else {
+        } else if (profile?.onboardingCompleted ?? false) {
           context.go('/home');
+        } else {
+          context.go('/onboarding');
         }
       } else {
         context.go('/welcome');

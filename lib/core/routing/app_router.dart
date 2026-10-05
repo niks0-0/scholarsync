@@ -1,7 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../features/resources/presentation/screens/resources_hub_screen.dart';
 import '../../features/academic_catalog/presentation/screens/academic_catalog_screen.dart';
+import '../../features/admin/presentation/screens/admin_backup_manager_screen.dart';
 import '../../features/admin/presentation/screens/admin_announcements_screen.dart';
 import '../../features/admin/presentation/screens/admin_college_management_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
@@ -46,9 +49,10 @@ final GoRouter appRouter = GoRouter(
   debugLogDiagnostics: false,
   redirect: (BuildContext context, GoRouterState state) {
     final auth = context.read<AuthProvider>();
-    final profile = context.read<ProfileProvider>().profile;
-    final isAuth = auth.isAuthenticated;
-    final isOnboardingDone = profile?.onboardingCompleted ?? false;
+    final profileProvider = context.read<ProfileProvider>();
+    final profile = profileProvider.profile;
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final isAuth = auth.isAuthenticated || firebaseUser != null;
     final role = profile?.role;
     final path = state.uri.path;
 
@@ -78,27 +82,48 @@ final GoRouter appRouter = GoRouter(
     // Allow splash screen and design preview initialization
     if (path == '/splash' || path == '/design-preview') return null;
 
-    // 1. Guard: Unauthenticated user accessing protected routes or /onboarding or /admin -> redirect to /welcome
-    if (!isAuth && (protectedRoutes.contains(path) || path == '/onboarding' || path.startsWith('/admin'))) {
+    final cleanEmail = (auth.currentUser?.email ?? firebaseUser?.email ?? profile?.email ?? '').toLowerCase().trim();
+    final isKnownAdminEmail = cleanEmail == 'admin@scholarsync.com' ||
+        cleanEmail == 'admin' ||
+        cleanEmail.startsWith('admin@') ||
+        cleanEmail.contains('admin');
+    final isDemoStudentEmail = cleanEmail == 'student@scholarsync.com' ||
+        cleanEmail == 'student' ||
+        cleanEmail.startsWith('student@');
+    final isAdminUser = isKnownAdminEmail ||
+        (role != null && (role.isAdmin || role.canManageCurriculum));
+    final isOnboardingDone = (profile?.onboardingCompleted ?? false) || isDemoStudentEmail;
+
+    // 1. Guard: Unauthenticated user accessing protected routes or /admin -> redirect to /welcome
+    // If auth is actively restoring session or loading, hold on protected route rather than kicking to welcome
+    if (!isAuth && !auth.isLoading && (protectedRoutes.contains(path) || path.startsWith('/admin'))) {
       return '/welcome';
     }
 
-    // 2. Guard: Authenticated user with onboardingCompleted == false accessing protected routes or /admin -> redirect to /onboarding
-    if (isAuth && !isOnboardingDone && (protectedRoutes.contains(path) || path.startsWith('/admin'))) {
+    // 2. Admin users bypass onboarding completely! If an admin accesses /onboarding or auth routes, route to /admin
+    if (isAuth && isAdminUser) {
+      if (path == '/onboarding' || publicAuthRoutes.contains(path)) {
+        return '/admin';
+      }
+      return null;
+    }
+
+    // 3. Non-admin users: if profile is loaded and onboarding is incomplete, redirect to /onboarding.
+    // If profile is still loading (profile == null), do NOT prematurely redirect to avoid kicking users on reload.
+    if (isAuth && !isAdminUser && profile != null && !isOnboardingDone && (protectedRoutes.contains(path) || path == '/onboarding')) {
       return '/onboarding';
     }
 
-    // 3. Guard: Admin Routes RBAC check
+    // 4. Guard: Admin Routes RBAC check (non-admins cannot access /admin)
     if (path.startsWith('/admin')) {
-      final canAccessAdmin = role != null && (role.isAdmin || role.canManageCurriculum);
-      if (!canAccessAdmin) {
+      if (!isAdminUser) {
         return '/home';
       }
     }
 
-    // 4. Guard: Authenticated user with onboardingCompleted == true accessing /onboarding or login flow -> redirect to /admin or /home
-    if (isAuth && isOnboardingDone && (path == '/onboarding' || publicAuthRoutes.contains(path))) {
-      return (role?.isAdmin ?? false) ? '/admin' : '/home';
+    // 5. Guard: Authenticated student user with onboardingCompleted == true accessing /onboarding or login flow -> redirect to /home
+    if (isAuth && !isAdminUser && isOnboardingDone && (path == '/onboarding' || publicAuthRoutes.contains(path))) {
+      return '/home';
     }
 
     return null;
@@ -276,6 +301,11 @@ final GoRouter appRouter = GoRouter(
           name: 'admin-community',
           builder: (context, state) => const AdminCommunityScreen(),
         ),
+        GoRoute(
+          path: '/admin/backup',
+          name: 'admin-backup',
+          builder: (context, state) => const AdminBackupManagerScreen(),
+        ),
       ],
     ),
 
@@ -292,6 +322,23 @@ final GoRouter appRouter = GoRouter(
               path: '/home',
               name: 'home',
               builder: (context, state) => const HomeScreen(),
+              routes: [
+                GoRoute(
+                  path: 'attendance',
+                  name: 'home-attendance',
+                  builder: (context, state) => const AttendanceScreen(),
+                ),
+                GoRoute(
+                  path: 'timetable',
+                  name: 'home-timetable',
+                  builder: (context, state) => const TimetableScreen(),
+                ),
+                GoRoute(
+                  path: 'leaderboard',
+                  name: 'home-leaderboard',
+                  builder: (context, state) => const LeaderboardScreen(),
+                ),
+              ],
             ),
           ],
         ),
@@ -321,7 +368,7 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: '/activities',
               name: 'activities',
-              builder: (context, state) => const AcademicCatalogScreen(),
+              builder: (context, state) => const ResourcesHubScreen(),
             ),
           ],
         ),

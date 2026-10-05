@@ -57,13 +57,18 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Academic Identity',
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Academic Identity',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.required),
             ],
           ),
@@ -81,13 +86,18 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Degree / Course Program',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Degree / Course Program',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.optional),
             ],
           ),
@@ -138,13 +148,18 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Academic Branch / Specialization',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Academic Branch / Specialization',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.required),
             ],
           ),
@@ -204,13 +219,18 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Current Academic Year',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Current Academic Year',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.required),
             ],
           ),
@@ -239,13 +259,18 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Current Semester',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Current Semester',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.required),
             ],
           ),
@@ -274,13 +299,18 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Division / Section',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Division / Section',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.required),
             ],
           ),
@@ -332,13 +362,18 @@ class _AcademicInfoStepState extends State<AcademicInfoStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Academic Identifiers',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Academic Identifiers',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.recommended),
             ],
           ),

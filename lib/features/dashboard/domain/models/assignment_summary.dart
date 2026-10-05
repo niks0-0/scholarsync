@@ -1,6 +1,44 @@
-enum AssignmentPriority { low, medium, high, urgent }
+enum AssignmentPriority {
+  low,
+  medium,
+  high,
+  urgent;
 
-enum AssignmentStatus { overdue, dueToday, upcoming, completed }
+  String get name {
+    switch (this) {
+      case AssignmentPriority.low:
+        return 'low';
+      case AssignmentPriority.medium:
+        return 'medium';
+      case AssignmentPriority.high:
+        return 'high';
+      case AssignmentPriority.urgent:
+        return 'urgent';
+    }
+  }
+
+  String get displayName => name.toUpperCase();
+}
+
+enum AssignmentStatus {
+  overdue,
+  dueToday,
+  upcoming,
+  completed;
+
+  String get name {
+    switch (this) {
+      case AssignmentStatus.overdue:
+        return 'overdue';
+      case AssignmentStatus.dueToday:
+        return 'dueToday';
+      case AssignmentStatus.upcoming:
+        return 'upcoming';
+      case AssignmentStatus.completed:
+        return 'completed';
+    }
+  }
+}
 
 /// Summary model for Assignment Dashboard card.
 class AssignmentSummary {

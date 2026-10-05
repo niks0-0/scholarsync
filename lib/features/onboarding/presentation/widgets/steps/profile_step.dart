@@ -57,13 +57,18 @@ class _ProfileStepState extends State<ProfileStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Personal Profile & Interests',
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Personal Profile & Interests',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.recommended),
             ],
           ),
@@ -203,13 +208,18 @@ class _ProfileStepState extends State<ProfileStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Full Display Name',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Full Display Name',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.required),
             ],
           ),
@@ -228,13 +238,18 @@ class _ProfileStepState extends State<ProfileStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Student Bio / Tagline',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Student Bio / Tagline',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.optional),
             ],
           ),
@@ -253,13 +268,18 @@ class _ProfileStepState extends State<ProfileStep> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Learning Interests & Specializations',
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Learning Interests & Specializations',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               const OnboardingClassificationBadge(level: ClassificationLevel.recommended),
             ],
           ),

@@ -63,6 +63,8 @@ class ChatRoom {
       if (id.isNotEmpty) 'id': id,
       'name': name,
       'type': type,
+      'category': type == 'subject' ? 'academic' : (type == 'batch' ? 'academic' : 'interest_skill'),
+      'joining_policy': 'public_academic',
       if (subjectId != null && subjectId!.trim().isNotEmpty) 'subject_id': subjectId,
       if (collegeId != null && collegeId!.trim().isNotEmpty) 'college_id': collegeId,
       if (branch != null && branch!.trim().isNotEmpty) 'branch': branch,

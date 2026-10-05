@@ -59,12 +59,12 @@ class AdminAnnouncementsScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _openCreateAnnouncementSheet(context),
-        backgroundColor: AppColors.accent,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.campaign_rounded),
-        label: const Text('Broadcast Alert', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.black,
+        tooltip: 'Broadcast Alert',
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

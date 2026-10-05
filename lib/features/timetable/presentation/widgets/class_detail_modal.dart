@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../attendance/presentation/attendance_provider.dart';
 import '../../domain/models/timetable_entry.dart';
 import '../timetable_provider.dart';
 import 'add_edit_class_sheet.dart';
@@ -100,10 +101,15 @@ class ClassDetailModal extends StatelessWidget {
                 backgroundColor: AppColors.error,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () {
-                context.read<TimetableProvider>().deleteClassEntry(firebaseUid, entry.id);
-                Navigator.of(context).pop();
-                Navigator.of(context).pop();
+              onPressed: () async {
+                final timetable = context.read<TimetableProvider>();
+                final attendance = context.read<AttendanceProvider>();
+                await timetable.deleteClassEntry(firebaseUid, entry.id);
+                attendance.syncTodayClasses(timetable.weeklySchedule);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop();
+                }
               },
               child: const Text('Delete'),
             ),
@@ -118,117 +124,163 @@ class ClassDetailModal extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.spacingXxl),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusXxl)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colorScheme.outline.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppDimensions.spacingLg),
+    final mediaQuery = MediaQuery.of(context);
 
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    return SafeArea(
+      top: false,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: mediaQuery.size.height * 0.85,
+        ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppDimensions.spacingLg,
+          vertical: AppDimensions.spacingMd,
+        ),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusXxl)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                ),
-                child: Text(
-                  entry.subjectCode,
-                  style: textTheme.labelLarge?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                  ),
+                  color: colorScheme.outline.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  entry.classType,
-                  style: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.copy_rounded),
-                tooltip: 'Duplicate Class',
-                onPressed: () => _showDuplicateDialog(context),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                tooltip: 'Edit Class',
-                onPressed: () => _showEditSheet(context),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-                tooltip: 'Delete Class',
-                onPressed: () => _showDeleteDialog(context),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppDimensions.spacingMd),
-
-          Text(
-            entry.subjectName,
-            style: textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
             ),
-          ),
+            const SizedBox(height: AppDimensions.spacingMd),
 
-          const SizedBox(height: AppDimensions.spacingLg),
-          const Divider(),
-          const SizedBox(height: AppDimensions.spacingLg),
+            // Scrollable Content Body
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                                ),
+                                child: Text(
+                                  entry.subjectCode,
+                                  style: textTheme.labelLarge?.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  entry.classType,
+                                  style: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.all(6),
+                              constraints: const BoxConstraints(),
+                              icon: const Icon(Icons.copy_rounded, size: 20),
+                              tooltip: 'Duplicate Class',
+                              onPressed: () => _showDuplicateDialog(context),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.all(6),
+                              constraints: const BoxConstraints(),
+                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              tooltip: 'Edit Class',
+                              onPressed: () => _showEditSheet(context),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.all(6),
+                              constraints: const BoxConstraints(),
+                              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
+                              tooltip: 'Delete Class',
+                              onPressed: () => _showDeleteDialog(context),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
 
-          // Details List
-          _buildDetailRow(context, 'Timing', '${entry.startTime} - ${entry.endTime} (${entry.durationMinutes} minutes)', Icons.schedule_rounded),
-          const SizedBox(height: 12),
-          _buildDetailRow(context, 'Location / Room', '${entry.room}${entry.building != null ? " (${entry.building})" : ""}', Icons.location_on_outlined),
-          const SizedBox(height: 12),
-          _buildDetailRow(context, 'Faculty / Professor', entry.facultyName ?? 'Department Assigned', Icons.person_rounded),
-          const SizedBox(height: 12),
-          _buildDetailRow(context, 'Delivery Mode', entry.mode, entry.mode == 'Online' ? Icons.laptop_mac_rounded : Icons.class_outlined),
-          if (entry.meetingUrl != null && entry.meetingUrl!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _buildDetailRow(context, 'Online Meeting Link', entry.meetingUrl!, Icons.link_rounded),
-          ],
-          if (entry.notes != null && entry.notes!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _buildDetailRow(context, 'Notes & Preparation', entry.notes!, Icons.notes_rounded),
-          ],
+                    const SizedBox(height: AppDimensions.spacingMd),
 
-          const SizedBox(height: AppDimensions.spacingXxl),
+                    Text(
+                      entry.subjectName,
+                      style: textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
 
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
+                    const SizedBox(height: AppDimensions.spacingMd),
+                    const Divider(),
+                    const SizedBox(height: AppDimensions.spacingMd),
+
+                    // Details List
+                    _buildDetailRow(context, 'Timing', '${entry.startTime} - ${entry.endTime} (${entry.durationMinutes} minutes)', Icons.schedule_rounded),
+                    const SizedBox(height: 12),
+                    _buildDetailRow(context, 'Location / Room', '${entry.room}${entry.building != null ? " (${entry.building})" : ""}', Icons.location_on_outlined),
+                    const SizedBox(height: 12),
+                    _buildDetailRow(context, 'Faculty / Professor', entry.facultyName ?? 'Department Assigned', Icons.person_rounded),
+                    const SizedBox(height: 12),
+                    _buildDetailRow(context, 'Delivery Mode', entry.mode, entry.mode == 'Online' ? Icons.laptop_mac_rounded : Icons.class_outlined),
+                    if (entry.meetingUrl != null && entry.meetingUrl!.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      _buildDetailRow(context, 'Online Meeting Link', entry.meetingUrl!, Icons.link_rounded),
+                    ],
+                    if (entry.notes != null && entry.notes!.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      _buildDetailRow(context, 'Notes & Preparation', entry.notes!, Icons.notes_rounded),
+                    ],
+
+                    const SizedBox(height: AppDimensions.spacingLg),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: AppDimensions.spacingSm),
+
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

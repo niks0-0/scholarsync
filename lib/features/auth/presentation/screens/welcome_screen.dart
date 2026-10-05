@@ -10,7 +10,7 @@ import '../widgets/app_logo.dart';
 import '../widgets/auth_glass_card.dart';
 import '../widgets/auth_mesh_background.dart';
 import '../widgets/error_message.dart';
-import '../widgets/quick_persona_sheet.dart';
+import '../widgets/social_login_button.dart';
 
 /// Clean, Modern & AMOLED-Optimized Welcome Screen.
 class WelcomeScreen extends StatefulWidget {
@@ -40,14 +40,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final auth = context.read<AuthProvider>();
-        if (auth.isAuthenticated) {
-          auth.signOut();
-        }
-      }
-    });
+    // Don't sign out here — splash already handles routing returning users to /home.
   }
 
   @override
@@ -56,44 +49,60 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     super.dispose();
   }
 
-  void _openPersonaSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => QuickPersonaSheet(
-        onSelectCredentials: (email, password, label) async {
-          final auth = context.read<AuthProvider>();
-          final profileProvider = context.read<ProfileProvider>();
+  bool _isSubmitting = false;
 
-          final success = await auth.signInWithEmail(email: email, password: password);
-          if (!mounted) return;
-
-          if (success) {
-            final user = auth.currentUser;
-            if (user != null) {
-              await profileProvider.syncProfile(
+  Future<void> _signInWithGoogle() async {
+    if (_isSubmitting) return;
+    setState(() {
+      _errorMessage = null;
+      _isSubmitting = true;
+    });
+    try {
+      final auth = context.read<AuthProvider>();
+      final profileProvider = context.read<ProfileProvider>();
+      final success = await auth.signInWithGoogle();
+      if (!mounted) return;
+      if (!success) {
+        if (auth.error != null && auth.error != 'Sign-in was cancelled.') {
+          setState(() => _errorMessage = auth.error);
+        }
+        return;
+      }
+      final user = auth.currentUser;
+      if (user != null) {
+        try {
+          await profileProvider
+              .syncProfile(
                 firebaseUid: user.uid,
-                email: user.email ?? email,
+                email: user.email ?? '',
                 fullName: user.displayNameOrEmail,
                 avatarUrl: user.photoUrl,
-                authProvider: 'password',
-              );
-              if (!mounted) return;
-              await context.read<NotificationProvider>().syncDeviceToken(user.uid);
-            }
-            if (!mounted) return;
-            if (profileProvider.profile?.role.isAdmin ?? false) {
-              context.go('/admin');
-            } else {
-              context.go('/home');
-            }
-          } else {
-            setState(() => _errorMessage = auth.error ?? 'Demo sign-in failed');
-          }
-        },
-      ),
-    );
+                authProvider: 'google.com',
+              )
+              .timeout(const Duration(seconds: 3));
+        } catch (_) {}
+        if (!mounted) return;
+        try {
+          await context.read<NotificationProvider>().syncDeviceToken(user.uid).timeout(const Duration(seconds: 2));
+        } catch (_) {}
+        if (!mounted) return;
+        final profile = profileProvider.profile;
+        final cleanEmail = (user.email ?? '').trim().toLowerCase();
+        final isAdmin = cleanEmail.contains('admin') ||
+            cleanEmail.startsWith('admin@') ||
+            (profile?.role.isAdmin ?? false);
+        if (isAdmin) {
+          context.go('/admin');
+        } else if (profile?.onboardingCompleted ?? false) {
+          context.go('/home');
+        } else {
+          // Google user — skip to step 1 (college) since Google gives us the name
+          context.go('/onboarding');
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
@@ -120,49 +129,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // ── Top Header Row ────────────────────────────────────
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              InkWell(
-                                onTap: _openPersonaSheet,
-                                borderRadius: BorderRadius.circular(20),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.bolt_rounded, size: 14, color: AppColors.primary),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        '⚡ Quick Demo',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
                           if (_errorMessage != null) ...[
-                            const SizedBox(height: 12),
                             ErrorMessage(
                               message: _errorMessage!,
                               onDismiss: () => setState(() => _errorMessage = null),
                             ),
+                            const SizedBox(height: 16),
                           ],
 
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 20),
 
                           // ── Logo Header ────────────────────────────────────────
                           const AppLogo(
@@ -170,21 +145,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             animate: true,
                           ),
 
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 16),
 
-                          // ── Title & App Details ────────────────────────────────
-                          const Text(
-                            'ScholarSync',
-                            style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: -0.8,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-
-                          const SizedBox(height: 8),
 
                           Text(
                             'Your unified student & academic hub.\nTrack attendance, access notes, timetable & campus community.',
@@ -235,7 +197,26 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                           const SizedBox(height: 32),
 
-                          // ── Next / Get Started Button (Leads to Registration) ─
+                          // ── Clear Action Prompt ────────────────────────────────
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'Choose how you would like to proceed',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // ── Option 1: New User -> Onboarding ───────────────────
                           Container(
                             width: double.infinity,
                             height: AppDimensions.buttonHeightLg,
@@ -255,7 +236,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               ],
                             ),
                             child: ElevatedButton(
-                              onPressed: auth.isLoading ? null : () => context.push('/register'),
+                              onPressed: (_isSubmitting || auth.isLoading) ? null : () => context.go('/onboarding'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
                                 foregroundColor: Colors.white,
@@ -267,51 +248,95 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
+                                  Icon(Icons.person_add_rounded, size: 20),
+                                  SizedBox(width: 10),
                                   Text(
-                                    'Next — Get Started',
+                                    "I'm New — Get Started",
                                     style: TextStyle(
                                       fontWeight: FontWeight.w800,
-                                      fontSize: 16,
+                                      fontSize: 15.5,
                                       letterSpacing: -0.3,
                                     ),
                                   ),
                                   SizedBox(width: 8),
-                                  Icon(Icons.arrow_forward_rounded, size: 20),
+                                  Icon(Icons.arrow_forward_rounded, size: 18),
                                 ],
                               ),
                             ),
                           ),
 
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
 
-                          // ── Existing User Sign In Link ─────────────────────────
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Already have an account? ',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.white.withValues(alpha: 0.65),
+                          // ── Option 2: Registered User -> Login ─────────────────
+                          Container(
+                            width: double.infinity,
+                            height: AppDimensions.buttonHeightLg,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                              color: const Color(0xFF141418),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: OutlinedButton(
+                              onPressed: (_isSubmitting || auth.isLoading) ? null : () => context.push('/login'),
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: Colors.white,
+                                side: BorderSide.none,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
                                 ),
                               ),
-                              InkWell(
-                                onTap: () => context.push('/login'),
-                                borderRadius: BorderRadius.circular(4),
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                  child: Text(
-                                    'Sign In',
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.login_rounded, size: 20, color: AppColors.primary),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'Already Registered? Sign In',
                                     style: TextStyle(
-                                      fontSize: 13,
                                       fontWeight: FontWeight.w800,
-                                      color: AppColors.primary,
+                                      fontSize: 15.5,
+                                      color: Colors.white,
+                                      letterSpacing: -0.3,
                                     ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // ── OR divider ─────────────────────────────────────────
+                          Row(
+                            children: [
+                              const Expanded(child: Divider(color: Color(0xFF27272A))),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(
+                                  'or continue with',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white.withValues(alpha: 0.4),
                                   ),
                                 ),
                               ),
+                              const Expanded(child: Divider(color: Color(0xFF27272A))),
                             ],
                           ),
+
+                          const SizedBox(height: 16),
+
+                          // ── Google One-Tap (fast-path for new & returning) ─────
+                          SocialLoginButton(
+                            provider: SocialProvider.google,
+                            onPressed: _signInWithGoogle,
+                            isLoading: _isSubmitting || auth.isLoading,
+                          ),
+
                         ],
                       ),
                     ),

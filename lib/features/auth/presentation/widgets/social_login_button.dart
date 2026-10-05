@@ -83,11 +83,15 @@ class SocialLoginButton extends StatelessWidget {
                         : colorScheme.onSurface,
                   ),
                   const SizedBox(width: AppDimensions.spacingSm),
-                  Text(
-                    _label,
-                    style: textTheme.labelLarge?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
+                  Flexible(
+                    child: Text(
+                      _label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.labelLarge?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
