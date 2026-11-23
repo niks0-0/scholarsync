@@ -455,7 +455,6 @@ class _FocusCardCarouselState extends State<_FocusCardCarousel> {
                         strokeWidth: 8,
                         backgroundColor: attColor.withValues(alpha: 0.18),
                         valueColor: AlwaysStoppedAnimation<Color>(attColor),
-                        strokeCap: pct >= 99.5 ? StrokeCap.butt : StrokeCap.round,
                       ),
                     ),
                     Column(

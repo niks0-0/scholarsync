@@ -62,7 +62,6 @@ class AttendanceSummaryHeader extends StatelessWidget {
                       child: CircularProgressIndicator(
                         value: (safePercentage / 100.0).clamp(0.0, 1.0),
                         strokeWidth: 8,
-                        strokeCap: safePercentage >= 99.5 ? StrokeCap.butt : StrokeCap.round,
                         backgroundColor: isDark
                             ? const Color(0xFF27272A)
                             : const Color(0xFFE2E8F0),
